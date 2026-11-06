@@ -1,0 +1,6 @@
+# Cloudflare Pages / Netlify response headers.
+# The downloaded games and the Android app read version.json from another origin before going online,
+# so it must allow cross-origin reads and never be cached. (GitHub Pages already allows cross-origin reads.)
+/data/version.json
+  Access-Control-Allow-Origin: *
+  Cache-Control: no-cache

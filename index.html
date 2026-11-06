@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Greenlight Studios</title>
+<meta name="description" content="Greenlight Studios makes pixel games. Play Pixel Smash and Pixel Smash Kart free in your browser, or download them for desktop and Android.">
+<meta name="theme-color" content="#0c1024">
+<meta property="og:title" content="Greenlight Studios">
+<meta property="og:description" content="Pixel Smash and Pixel Smash Kart. Play free in your browser.">
+<meta property="og:image" content="img/smash-title.jpg">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Silkscreen&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<script>document.documentElement.classList.remove('no-js')</script>
+</head>
+<body>
+
+<!-- pixel sprites: the studio's traffic light and the little icons -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="tl" viewBox="0 0 10 24" shape-rendering="crispEdges">
+    <rect x="1" y="0" width="8" height="24" fill="#06070f"/><rect x="0" y="1" width="10" height="22" fill="#06070f"/>
+    <rect x="1" y="1" width="8" height="22" fill="#2a3150"/><rect x="1" y="2" width="1" height="20" fill="#3c4570"/><rect x="8" y="2" width="1" height="20" fill="#1c2238"/>
+    <rect x="1" y="1" width="1" height="1" fill="#06070f"/><rect x="8" y="1" width="1" height="1" fill="#06070f"/><rect x="1" y="22" width="1" height="1" fill="#06070f"/><rect x="8" y="22" width="1" height="1" fill="#06070f"/>
+    <g><rect x="3" y="2" width="4" height="6" style="fill:var(--lr)"/><rect x="2" y="3" width="6" height="4" style="fill:var(--lr)"/><rect x="3" y="3" width="4" height="4" style="fill:var(--lr2)"/><rect x="3" y="3" width="2" height="1" style="fill:var(--lrh)"/><rect x="3" y="4" width="1" height="1" style="fill:var(--lrh)"/></g>
+    <g><rect x="3" y="9" width="4" height="6" style="fill:var(--la)"/><rect x="2" y="10" width="6" height="4" style="fill:var(--la)"/><rect x="3" y="10" width="4" height="4" style="fill:var(--la2)"/><rect x="3" y="10" width="2" height="1" style="fill:var(--lah)"/><rect x="3" y="11" width="1" height="1" style="fill:var(--lah)"/></g>
+    <g><rect x="3" y="16" width="4" height="6" style="fill:var(--lg)"/><rect x="2" y="17" width="6" height="4" style="fill:var(--lg)"/><rect x="3" y="17" width="4" height="4" style="fill:var(--lg2)"/><rect x="3" y="17" width="2" height="1" style="fill:var(--lgh)"/><rect x="3" y="18" width="1" height="1" style="fill:var(--lgh)"/></g>
+  </symbol>
+  <symbol id="i-play" viewBox="0 0 8 8"><path fill="currentColor" d="M1 0h2v8H1zM3 1h2v6H3zM5 2h2v4H5zM7 3h1v2H7z"/></symbol>
+  <symbol id="i-down" viewBox="0 0 8 8"><path fill="currentColor" d="M3 0h2v4H3zM1 3h6v1H1zM2 4h4v1H2zM3 5h2v1H3zM0 7h8v1H0z"/></symbol>
+  <symbol id="i-web" viewBox="0 0 12 12"><path fill="#06070f" d="M0 1h12v10H0z"/><path fill="#2a3150" d="M1 2h10v8H1z"/><path fill="#4c8cff" d="M1 2h10v2H1z"/><path fill="#fff" d="M2 3h1v1H2zM4 3h1v1H4z"/><path fill="#6ee06a" d="M5 5h1v4H5zM6 6h1v2H6z"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 12 12"><path fill="#06070f" d="M3 0h6v12H3z"/><path fill="#2a3150" d="M4 1h4v10H4z"/><path fill="#6ee06a" d="M4 2h4v6H4z"/><path fill="#b8f5a8" d="M4 2h2v1H4z"/><path fill="#a7acd0" d="M5 9h2v1H5z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 12 12"><path fill="#06070f" d="M0 2h12v9H0z"/><path fill="#c9901c" d="M1 3h10v7H1z"/><path fill="#ffd04a" d="M1 3h10v2H1z"/><path fill="#06070f" d="M5 3h2v4H5z"/><path fill="#f1f2e4" d="M5 5h2v1H5z"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Greenlight Studios home">
+      <svg aria-hidden="true"><use href="#tl"/></svg>
+      <span><b>Greenlight</b><small>STUDIOS</small></span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#games">Games</a>
+      <a href="#download">Download</a>
+      <a href="#about">About</a>
+      <a class="btn sm" href="#games"><svg aria-hidden="true"><use href="#i-play"/></svg>Play</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="studio">
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <div class="hero-in wrap">
+      <svg class="lightmark" id="mark" viewBox="0 0 10 24" aria-hidden="true"><use href="#tl"/></svg>
+      <h1 class="wordmark" id="studio"><span class="w1">GREENLIGHT</span><span class="w2">STUDIOS</span></h1>
+      <p class="lede">Pixel games you can play right now. No install, no account &mdash; open a tab and fight, or race.</p>
+      <div class="hero-cta">
+        <a class="btn red" href="play.html?game=smash"><svg aria-hidden="true"><use href="#i-play"/></svg>Play Pixel Smash</a>
+        <a class="btn gold" href="play.html?game=kart"><svg aria-hidden="true"><use href="#i-play"/></svg>Play Pixel Smash Kart</a>
+      </div>
+    </div>
+    <a class="press" href="#games">&#9660; PRESS START &#9660;</a>
+  </section>
+
+  <section class="band" id="games" aria-labelledby="games-h">
+    <div class="wrap">
+      <div class="center rise">
+        <p class="kicker">Select game</p>
+        <h2 class="title" id="games-h">Our Games</h2>
+        <p class="lede">Two games, one world. The same six heroes brawl in Pixel Smash and race in Pixel Smash Kart.</p>
+      </div>
+
+      <article class="game smash rise" aria-labelledby="smash-h">
+        <a class="shot" href="play.html?game=smash" aria-label="Play Pixel Smash in your browser">
+          <span class="tag">PLATFORM FIGHTER</span>
+          <img src="img/smash-title.jpg" alt="Pixel Smash title screen: six fighters clash under a purple night sky" width="800" height="450" loading="lazy">
+          <span class="play" aria-hidden="true"><span>&#9654; PLAY</span></span>
+        </a>
+        <div>
+          <h3 class="gname" id="smash-h">Pixel Smash</h3>
+          <p class="genre">Knock them off the stage</p>
+          <p class="desc">Tilts, smashes, specials, grabs and parries. Rack up damage, then launch your rivals off the edge. Fight with up to four players on one screen, over LAN, or online in <b>For Fun</b> and <b>For Glory</b> &mdash; where every win grows your fighter's Power. Push the stick fast with attack for an instant smash, or press attack and jump together for a short-hop aerial.</p>
+          <div><span class="chip">1&ndash;4 players</span><span class="chip">Online</span><span class="chip">Friends</span><span class="chip">LAN</span><span class="chip">Gamepad</span><span class="chip">Touch</span></div>
+          <ul class="stats">
+            <li><b>6</b><span>Fighters</span></li>
+            <li><b>7</b><span>Stages</span></li>
+            <li><b>4</b><span>Players</span></li>
+          </ul>
+          <div class="actions">
+            <a class="btn red" href="play.html?game=smash"><svg aria-hidden="true"><use href="#i-play"/></svg>Play in browser</a>
+            <a class="btn ghost" href="#download"><svg aria-hidden="true"><use href="#i-down"/></svg>Download</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="game kart flip rise" aria-labelledby="kart-h">
+        <a class="shot" href="play.html?game=kart" aria-label="Play Pixel Smash Kart in your browser">
+          <span class="tag">KART RACER</span>
+          <img src="img/kart-title.jpg" alt="Pixel Smash Kart title screen: six drivers lined up on a road above the clouds" width="800" height="450" loading="lazy">
+          <span class="play" aria-hidden="true"><span>&#9654; RACE</span></span>
+        </a>
+        <div>
+          <h3 class="gname" id="kart-h">Pixel Smash Kart</h3>
+          <p class="genre">Drift. Boost. Win.</p>
+          <p class="desc">Tear around six tracks, from the wide lanes of Meadowrun to the lava lake under Cinderhold and the sky gaps of Sunspire. Charge drifts for boosts, grab item boxes, race split-screen with a friend, or take on up to eleven others online. Jump into a friend's room when they're in a race, or spectate until the next one starts.</p>
+          <div><span class="chip">Split-screen</span><span class="chip">Online</span><span class="chip">Friends</span><span class="chip">Time trials</span><span class="chip">Gamepad</span><span class="chip">Touch</span></div>
+          <ul class="stats">
+            <li><b>6</b><span>Tracks</span></li>
+            <li><b>2</b><span>Cups</span></li>
+            <li><b>12</b><span>Racers online</span></li>
+          </ul>
+          <div class="actions">
+            <a class="btn gold" href="play.html?game=kart"><svg aria-hidden="true"><use href="#i-play"/></svg>Play in browser</a>
+            <a class="btn ghost" href="#download"><svg aria-hidden="true"><use href="#i-down"/></svg>Download</a>
+          </div>
+        </div>
+      </article>
+
+      <div class="save panel rise">
+        <div class="link" aria-hidden="true">
+          <img src="img/smash-icon.png" alt="" width="64" height="64"><i>+</i><img src="img/kart-icon.png" alt="" width="64" height="64">
+        </div>
+        <div>
+          <h3>One save. Both games.</h3>
+          <p>Pixel Smash and Pixel Smash Kart share a single save and one online username. Copy a save code (<code>PXSAVE1:&hellip;</code>) from the <b>Save data</b> menu in either game to carry your Power and VR to another browser, the downloaded build, or your phone.</p>
+          <p>Your save also holds a 10-digit <b>friend code</b> that works in both games. Share it, or add players straight from the results screen. Friends show their VR and Power, and both games keep your win&ndash;loss record against each one.</p>
+        </div>
+      </div>
+      <div class="ad-slot" data-ad="home-games"></div>
+    </div>
+  </section>
+
+  <section class="band alt" id="download" aria-labelledby="dl-h">
+    <div class="wrap">
+      <div class="center rise">
+        <p class="kicker">Take it with you</p>
+        <h2 class="title" id="dl-h">Download</h2>
+        <p class="lede">Every game is a single file. Grab the browser build to play offline on any computer, or the APK for Android.</p>
+      </div>
+
+      <div class="dl-grid">
+        <article class="dl-card panel rise" data-game="smash">
+          <header>
+            <img src="img/smash-icon.png" alt="" width="64" height="64">
+            <div><h3>Pixel Smash</h3><small data-ver>Version 1.0</small></div>
+          </header>
+          <ul class="dl-list">
+            <li class="dl-row" data-kind="html">
+              <svg aria-hidden="true"><use href="#i-web"/></svg>
+              <div><b>Browser build</b><small><span data-size>.html</span> &middot; Windows, Mac, Linux, ChromeOS</small></div>
+              <a class="btn sm red" href="games/pixel-smash.html" download="Pixel Smash.html"><svg aria-hidden="true"><use href="#i-down"/></svg>.html</a>
+            </li>
+            <li class="dl-row" data-kind="apk">
+              <svg aria-hidden="true"><use href="#i-phone"/></svg>
+              <div><b>Android <span class="badge soon" data-badge>SOON</span></b><small data-size>.apk &middot; in development</small></div>
+              <a class="btn sm red" aria-disabled="true" role="link"><svg aria-hidden="true"><use href="#i-down"/></svg>.apk</a>
+            </li>
+          </ul>
+        </article>
+
+        <article class="dl-card panel rise" data-game="kart">
+          <header>
+            <img src="img/kart-icon.png" alt="" width="64" height="64">
+            <div><h3>Pixel Smash Kart</h3><small data-ver>Version 1.0</small></div>
+          </header>
+          <ul class="dl-list">
+            <li class="dl-row" data-kind="html">
+              <svg aria-hidden="true"><use href="#i-web"/></svg>
+              <div><b>Browser build</b><small><span data-size>.html</span> &middot; Windows, Mac, Linux, ChromeOS</small></div>
+              <a class="btn sm gold" href="games/pixel-smash-kart.html" download="Pixel Smash Kart.html"><svg aria-hidden="true"><use href="#i-down"/></svg>.html</a>
+            </li>
+            <li class="dl-row" data-kind="apk">
+              <svg aria-hidden="true"><use href="#i-phone"/></svg>
+              <div><b>Android <span class="badge soon" data-badge>SOON</span></b><small data-size>.apk &middot; in development</small></div>
+              <a class="btn sm gold" aria-disabled="true" role="link"><svg aria-hidden="true"><use href="#i-down"/></svg>.apk</a>
+            </li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="bundle panel rise" id="bundle">
+        <div style="display:flex;gap:16px;align-items:center">
+          <svg width="48" height="48" aria-hidden="true" style="shape-rendering:crispEdges"><use href="#i-box"/></svg>
+          <div><h3>Get both games</h3><p data-bsize>Both browser builds in one .zip, with a quick-start readme.</p></div>
+        </div>
+        <a class="btn" href="downloads/" data-bundle><svg aria-hidden="true"><use href="#i-down"/></svg>Download .zip</a>
+      </div>
+      <div class="ad-slot" data-ad="home-download"></div>
+
+      <div class="howto">
+        <div class="panel rise">
+          <h4>Browser build</h4>
+          <ol>
+            <li>Download the <b>.html</b> file.</li>
+            <li>Double-click it. It opens in your browser.</li>
+            <li>Play. Saves stay on that computer.</li>
+          </ol>
+        </div>
+        <div class="panel rise">
+          <h4>Android</h4>
+          <ol>
+            <li>Download the <b>.apk</b> on your phone.</li>
+            <li>Open it and allow installs from your browser when asked.</li>
+            <li>Tap Install. The game launches fullscreen.</li>
+          </ol>
+        </div>
+        <div class="panel rise">
+          <h4>Good to know</h4>
+          <ol>
+            <li>Keyboard, gamepad and touch all work. Hide the on-screen controls in Options.</li>
+            <li>Online play and fonts need internet.</li>
+            <li>Move saves with a save code.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="about" aria-labelledby="about-h">
+    <div class="wrap about rise">
+      <svg class="lightmark" viewBox="0 0 10 24" aria-hidden="true"><use href="#tl"/></svg>
+      <div>
+        <p class="kicker">About the studio</p>
+        <h2 class="title" id="about-h">Greenlight Studios</h2>
+        <p class="lede">We make small, fast pixel games that run anywhere a browser does. Every game ships as a single file you can keep, and every game is free to play right here.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>&copy; <span id="yr">2026</span> Greenlight Studios</span>
+    <nav aria-label="Footer">
+      <a href="play.html?game=smash">Pixel Smash</a>
+      <a href="play.html?game=kart">Pixel Smash Kart</a>
+      <a href="#download">Download</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="data/builds.js"></script>
+<script src="js/site.js"></script>
+<script src="data/adsense.js"></script>
+<script src="js/ads.js"></script>
+</body>
+</html>

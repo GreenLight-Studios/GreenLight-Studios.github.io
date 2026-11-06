@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Play &middot; Greenlight Studios</title>
+<meta name="theme-color" content="#0c1024">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Silkscreen&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<style>
+  :root{--bar:58px}
+  html,body{height:100%;overflow:hidden}
+  .pbar{position:relative;height:var(--bar);display:flex;align-items:center;gap:12px;padding:0 max(12px,env(safe-area-inset-left));background:#0a0d1e;box-shadow:0 4px 0 var(--edge);z-index:5}
+  .back{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--mute);font:12px/1 var(--label);letter-spacing:.06em;padding:8px 6px}
+  .back:hover{color:#fff}
+  .back svg{width:12px;height:29px}
+  .ptitle{display:flex;align-items:center;gap:10px;margin:0 auto 0 8px;min-width:0}
+  .ptitle img{width:32px;height:32px;image-rendering:pixelated;box-shadow:-2px 0 0 var(--edge),2px 0 0 var(--edge),0 -2px 0 var(--edge),0 2px 0 var(--edge)}
+  .ptitle h1{font:700 20px/1 var(--display);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+  .ptools{display:flex;gap:4px;align-items:center}
+  .ptools .btn{font-size:14px;padding:8px 12px 10px}
+  @media (max-width:720px){.ptools .lbl,.back .lbl,#swap{display:none}.ptitle h1{font-size:17px}}
+
+  .screen{position:relative;height:calc(100% - var(--bar));background:#000}
+  /* website ads: a rail beside the game on wide screens only, never over it (fullscreen shows the game alone) */
+  .adrail{display:none}
+  @media (min-width:1280px) and (min-height:640px){
+    .ads-on .adrail.ad-live{display:block;position:absolute;top:var(--bar);right:0;bottom:0;width:320px;padding:14px 10px;background:#0a0d1e;overflow:hidden;box-shadow:inset 4px 0 0 var(--edge)}
+    .ads-on .adrail.ad-live::before{content:"Advertisement";display:block;font:10px/1 var(--label);letter-spacing:.12em;color:var(--dim);margin:0 0 8px;text-transform:uppercase}
+    .ads-on:has(.adrail.ad-live) .screen{margin-right:320px}
+  }
+  .screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#000}
+  .poster{position:absolute;inset:0;display:grid;place-items:center;border:0;padding:0;margin:0;cursor:pointer;color:#fff;background:#06070f;overflow:hidden;width:100%;font:inherit}
+  .poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55;filter:saturate(1.1)}
+  .poster::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(6,7,15,.85) 100%),repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 2px,transparent 2px 4px)}
+  .poster .go{position:relative;z-index:1;display:grid;justify-items:center;gap:16px;text-align:center;padding:16px}
+  .poster .pill{font:700 clamp(22px,4vw,34px)/1 var(--display);background:var(--red);color:#fff;padding:16px 34px 19px;box-shadow:inset 0 -5px 0 var(--red-d),inset 0 3px 0 rgba(255,255,255,.3),-4px 0 0 var(--edge),4px 0 0 var(--edge),0 -4px 0 var(--edge),0 4px 0 var(--edge),0 10px 0 rgba(0,0,0,.4)}
+  .kart .poster .pill{background:var(--kart);color:#241400;box-shadow:inset 0 -5px 0 var(--kart-d),inset 0 3px 0 rgba(255,255,255,.3),-4px 0 0 var(--edge),4px 0 0 var(--edge),0 -4px 0 var(--edge),0 4px 0 var(--edge),0 10px 0 rgba(0,0,0,.4)}
+  .poster:hover .pill,.poster:focus-visible .pill{transform:translateY(-3px)}
+  .poster .pill span{animation:blink 1.1s steps(1) infinite}
+  @media (prefers-reduced-motion:reduce){.poster .pill span{animation:none}}
+  .poster small{font:12px/1.6 var(--label);color:#dfe1f2;letter-spacing:.06em;text-shadow:0 2px 0 #000}
+  .loading{position:absolute;inset:0;display:grid;place-items:center;font:13px var(--label);letter-spacing:.2em;color:var(--mute);background:#06070f;pointer-events:none}
+  .loading i{display:block;width:180px;height:10px;margin-top:14px;background:#1a2046;box-shadow:-3px 0 0 var(--edge),3px 0 0 var(--edge),0 -3px 0 var(--edge),0 3px 0 var(--edge);position:relative;overflow:hidden}
+  .loading i::after{content:"";position:absolute;inset:0;width:40%;background:var(--green);animation:load 1.2s steps(10) infinite}
+  .kart .loading i::after{background:var(--kart)}
+  @keyframes load{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+
+  .drawer{position:absolute;top:var(--bar);right:0;bottom:0;width:min(380px,100%);background:var(--panel);z-index:6;padding:24px 22px 30px;overflow:auto;box-shadow:-4px 0 0 var(--edge),-12px 0 0 rgba(0,0,0,.35)}
+  .drawer h2{font:700 24px/1 var(--display);margin:0 0 4px;color:#fff}
+  .drawer p.sub{margin:0 0 18px;color:var(--mute);font-size:14px}
+  .drawer h3{font:12px/1 var(--label);letter-spacing:.12em;color:var(--gold);margin:22px 0 10px;text-transform:uppercase}
+  .drawer dl{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;margin:0;font-size:15px;align-items:baseline}
+  .drawer dt{white-space:nowrap;text-align:right}
+  .drawer dd{margin:0;color:#d4d7ec}
+  .drawer .x{position:absolute;top:14px;right:14px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="tl" viewBox="0 0 10 24" shape-rendering="crispEdges">
+    <rect x="1" y="0" width="8" height="24" fill="#06070f"/><rect x="0" y="1" width="10" height="22" fill="#06070f"/>
+    <rect x="1" y="1" width="8" height="22" fill="#2a3150"/>
+    <rect x="3" y="2" width="4" height="6" fill="#4a1c26"/><rect x="2" y="3" width="6" height="4" fill="#4a1c26"/>
+    <rect x="3" y="9" width="4" height="6" fill="#4a3a1c"/><rect x="2" y="10" width="6" height="4" fill="#4a3a1c"/>
+    <rect x="3" y="16" width="4" height="6" fill="#3aa84c"/><rect x="2" y="17" width="6" height="4" fill="#3aa84c"/><rect x="3" y="17" width="4" height="4" fill="#6ee06a"/><rect x="3" y="17" width="2" height="1" fill="#f0ffe4"/>
+  </symbol>
+  <symbol id="i-down" viewBox="0 0 8 8"><path fill="currentColor" d="M3 0h2v4H3zM1 3h6v1H1zM2 4h4v1H2zM3 5h2v1H3zM0 7h8v1H0z"/></symbol>
+  <symbol id="i-full" viewBox="0 0 8 8"><path fill="currentColor" d="M0 0h3v1H1v2H0zM5 0h3v3H7V1H5zM0 5h1v2h2v1H0zM7 5h1v3H5V7h2z"/></symbol>
+  <symbol id="i-pad" viewBox="0 0 8 8"><path fill="currentColor" d="M1 2h6v1h1v4H6V6H2v1H0V3h1zM2 3v1H1v1h1v1h1V5h1V4H3V3zM5 4h1v1H5zM6 3h1v1H6z"/></symbol>
+</svg>
+
+<header class="pbar">
+  <a class="back" href="index.html"><svg aria-hidden="true"><use href="#tl"/></svg><span class="lbl">&#9664; Greenlight</span><span class="sr">Back to Greenlight Studios</span></a>
+  <div class="ptitle"><img id="gicon" src="img/smash-icon.png" alt="" width="32" height="32"><h1 id="gname">Pixel Smash</h1></div>
+  <div class="ptools">
+    <a class="btn ghost" id="swap" href="play.html?game=kart">Play Kart</a>
+    <button class="btn ghost" id="ctl" type="button" aria-expanded="false" aria-controls="controls"><svg aria-hidden="true"><use href="#i-pad"/></svg><span class="lbl">Controls</span></button>
+    <a class="btn ghost" id="dl" href="games/pixel-smash.html" download="Pixel Smash.html"><svg aria-hidden="true"><use href="#i-down"/></svg><span class="lbl">Download</span></a>
+    <button class="btn" id="fs" type="button"><svg aria-hidden="true"><use href="#i-full"/></svg><span class="lbl">Fullscreen</span></button>
+  </div>
+</header>
+
+<main class="screen" id="screen">
+  <iframe id="game" title="Pixel Smash" allow="fullscreen; gamepad; autoplay; clipboard-read; clipboard-write" allowfullscreen hidden></iframe>
+  <div class="loading" id="loading" hidden><div>LOADING<i></i></div></div>
+  <button class="poster" id="poster" type="button">
+    <img id="pimg" src="img/smash-title.jpg" alt="">
+    <span class="go">
+      <span class="pill"><span>&#9654; PRESS START</span></span>
+      <small id="pinfo">Click to load the game<br>Keyboard, gamepad or touch</small>
+    </span>
+  </button>
+</main>
+<aside class="adrail" data-ad="play-rail" data-fmt="vertical" aria-label="Advertisement"></aside>
+
+<aside class="drawer" id="controls" hidden aria-labelledby="ctl-h">
+  <button class="btn ghost sm x" id="ctlx" type="button" aria-label="Close controls">&#10005;</button>
+  <h2 id="ctl-h">Controls</h2>
+  <p class="sub">Gamepads work too: plug one in and press a button. On phones and tablets the game shows touch buttons; turn them off in Options or Settings.</p>
+  <div id="ctl-body"></div>
+</aside>
+
+<script src="data/builds.js"></script>
+<script>
+(() => {
+  'use strict';
+  const GAMES = {
+    smash: {
+      name: 'Pixel Smash', other: 'kart', otherLabel: 'Play Kart', file: 'games/pixel-smash.html', saveAs: 'Pixel Smash.html',
+      img: 'img/smash-title.jpg', icon: 'img/smash-icon.png',
+      controls: `
+        <h3>Move</h3><dl>
+          <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>Dash and run (<kbd>Shift</kbd> to walk)</dd>
+          <dt><kbd>W</kbd> / <kbd>Space</kbd></dt><dd>Jump, again in the air to double jump</dd>
+          <dt><kbd>S</kbd></dt><dd>Crouch, fast fall, double tap to drop through</dd></dl>
+        <h3>Fight</h3><dl>
+          <dt><kbd>P</kbd></dt><dd>Jab. Hold a direction, then <kbd>P</kbd> to tilt</dd>
+          <dt><kbd>D</kbd> + <kbd>P</kbd></dt><dd>Press both together for an instant smash (also <kbd>A</kbd>, <kbd>W</kbd>, <kbd>S</kbd>). Hold <kbd>P</kbd> to charge it</dd>
+          <dt><kbd>Space</kbd> + <kbd>P</kbd></dt><dd>Short hop with an aerial attack</dd>
+          <dt><kbd>O</kbd></dt><dd>Special. Add a direction for side, up or down</dd>
+          <dt><kbd>I</kbd></dt><dd>Shield. With a direction: roll. In the air: air dodge. Release just before a hit to parry</dd>
+          <dt><kbd>U</kbd></dt><dd>Grab, then <kbd>P</kbd> to pummel or a direction to throw</dd></dl>`
+    },
+    kart: {
+      name: 'Pixel Smash Kart', other: 'smash', otherLabel: 'Play Smash', file: 'games/pixel-smash-kart.html', saveAs: 'Pixel Smash Kart.html',
+      img: 'img/kart-title.jpg', icon: 'img/kart-icon.png',
+      controls: `
+        <h3>Drive</h3><dl>
+          <dt><kbd>W</kbd> / <kbd>&uarr;</kbd></dt><dd>Accelerate</dd>
+          <dt><kbd>S</kbd> / <kbd>&darr;</kbd></dt><dd>Brake and reverse</dd>
+          <dt><kbd>A</kbd><kbd>D</kbd> / <kbd>&larr;</kbd><kbd>&rarr;</kbd></dt><dd>Steer</dd>
+          <dt><kbd>Space</kbd> / <kbd>Shift</kbd></dt><dd>Drift. Hold through a turn to charge a boost</dd>
+          <dt><kbd>E</kbd> / <kbd>Q</kbd></dt><dd>Use item</dd>
+          <dt><kbd>C</kbd></dt><dd>Look behind</dd>
+          <dt><kbd>Esc</kbd> / <kbd>P</kbd></dt><dd>Pause</dd></dl>
+        <h3>Split-screen on one keyboard</h3><dl>
+          <dt>Left player</dt><dd><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, drift <kbd>Space</kbd>, item <kbd>E</kbd></dd>
+          <dt>Right player</dt><dd>Arrows, drift <kbd>R.Shift</kbd>, item <kbd>.</kbd></dd></dl>
+        <h3>Extras</h3><dl>
+          <dt><kbd>F</kbd></dt><dd>Fullscreen</dd>
+          <dt><kbd>M</kbd></dt><dd>Music on / off</dd></dl>`
+    }
+  };
+
+  const id = new URLSearchParams(location.search).get('game') === 'kart' ? 'kart' : 'smash';
+  const g = GAMES[id], B = window.GL_BUILDS, build = B && B.games[id];
+  const $ = (s) => document.getElementById(s);
+  document.body.classList.add(id);
+  document.title = g.name + ' · Play · Greenlight Studios';
+  $('gname').textContent = g.name;
+  $('gicon').src = g.icon;
+  $('pimg').src = g.img;
+  $('game').title = g.name;
+  $('swap').href = 'play.html?game=' + g.other; $('swap').textContent = g.otherLabel;
+  const file = build ? build.html.file : g.file;
+  $('dl').href = file; $('dl').setAttribute('download', g.saveAs);
+  $('fs').classList.toggle('red', id === 'smash'); $('fs').classList.toggle('gold', id === 'kart');
+  if (build) $('pinfo').innerHTML = 'Click to load the game (' + (build.html.size / 1048576).toFixed(1) + ' MB)<br>Keyboard, gamepad or touch';
+  $('ctl-body').innerHTML = g.controls;
+
+  // the game only loads on click: saves bandwidth, and the click unlocks audio
+  const frame = $('game');
+  function play() {
+    $('poster').hidden = true; $('loading').hidden = false;
+    frame.hidden = false;
+    frame.addEventListener('load', () => { $('loading').hidden = true; frame.focus(); try { frame.contentWindow.focus(); } catch (e) {} }, { once: true });
+    frame.src = file;
+  }
+  $('poster').addEventListener('click', play);
+  if (new URLSearchParams(location.search).has('autostart')) play();
+
+  // fullscreen the game area, so the bar goes away too
+  $('fs').addEventListener('click', () => {
+    if ($('poster').hidden === false) play();
+    const el = $('screen');
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (req) req.call(el).catch(() => {});
+    setTimeout(() => frame.focus(), 50);
+  });
+
+  // controls drawer
+  const dr = $('controls'), ctl = $('ctl');
+  const setDrawer = (open) => { dr.hidden = !open; ctl.setAttribute('aria-expanded', open); if (!open) frame.focus(); else $('ctlx').focus(); };
+  ctl.addEventListener('click', () => setDrawer(dr.hidden));
+  $('ctlx').addEventListener('click', () => setDrawer(false));
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !dr.hidden) setDrawer(false); });
+})();
+</script>
+<script src="data/adsense.js"></script>
+<script src="js/ads.js"></script>
+</body>
+</html>
