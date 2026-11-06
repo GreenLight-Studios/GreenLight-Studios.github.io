@@ -8749,14 +8749,14 @@ const FR=(()=>{
   function host(){const me=meGet();if(P.peer||P.busy||!me||!P.pmm||typeof RTCPeerConnection==='undefined')return;P.busy=true;
     P.pmm.load().then(ok=>ok?P.pmm.open('pxfr1-'+P.game+'-'+me.c):null).then(p=>{P.busy=false;if(!p||p==='taken')return;P.peer=p;
       p.on('disconnected',()=>{try{if(P.peer===p)p.reconnect()}catch(e){}});
-      p.on('connection',cn=>{cn.on('data',m=>{if(!m||m.t!=='who')return;let i={};try{i=P.info&&P.info()||{}}catch(e){}
+      p.on('connection',cn=>{cn.on('data',m=>{if(!m||m.t!=='who')return;if(kind(m.c)==='real'&&find(m.c)){seen(m.c,{n:m.n,vr:m.vr,pw:m.pw,pc:m.pc,mode:m.mode});P.st[clean(m.c)]={at:Date.now(),r:{st:m.st||'online',g:m.g,mode:m.mode}};if(isOpen())draw()}let i={};try{i=P.info&&P.info()||{}}catch(e){}
         try{cn.send(Object.assign({t:'me',n:me.n,c:me.c,g:P.game},i))}catch(e){}setTimeout(()=>{try{cn.close()}catch(e){}},1500)})})}).catch(()=>{P.busy=false})}
   // ask each real friend's game where they are. onEach(code, reply or null) as answers come in
   async function lookup(codes,onEach){const pmm=P.pmm;if(!pmm||!codes.length||typeof RTCPeerConnection==='undefined'){codes.forEach(c=>onEach(c,null));return}
     if(!await pmm.load()){codes.forEach(c=>onEach(c,null));return}const tmp=await pmm.open(null);if(!tmp||tmp==='taken'){codes.forEach(c=>onEach(c,null));return}
     const me=meGet(),ask=id=>new Promise(res=>{let done=false;const cn=tmp.connect(id,{reliable:true,serialization:'json'});
-      const end=v=>{if(done)return;done=true;clearTimeout(t);tmp.off('error',onE);try{cn.close()}catch(e){}res(v)},t=setTimeout(()=>end(null),4000),onE=e=>{if(e&&e.type==='peer-unavailable'&&String(e.message||'').includes(id))end(null)};
-      tmp.on('error',onE);cn.on('open',()=>{try{cn.send({t:'who',c:me&&me.c})}catch(e){}});cn.on('data',m=>{if(m&&m.t==='me')end(m)});cn.on('close',()=>end(null))});
+      const end=v=>{if(done)return;done=true;clearTimeout(t);tmp.off('error',onE);try{cn.close()}catch(e){}res(v)},t=setTimeout(()=>end(null),10000),onE=e=>{if(e&&e.type==='peer-unavailable'&&String(e.message||'').includes(id))end(null)};
+      tmp.on('error',onE);cn.on('open',()=>{let i={};try{i=P.info&&P.info()||{}}catch(e){}try{cn.send(Object.assign({},i,{t:'who',c:me&&me.c,n:me&&me.n,g:P.game}))}catch(e){}});cn.on('data',m=>{if(m&&m.t==='me')end(m)});cn.on('close',()=>end(null))});
     try{for(const c of codes){let r=null;for(const g of P.game==='s'?['s','k']:['k','s']){r=await ask('pxfr1-'+g+'-'+c);if(r&&r.c===c)break;r=null}
       P.st[c]={at:Date.now(),r};if(r)seen(c,{n:r.n,vr:r.vr,pw:r.pw,pc:r.pc,mode:r.mode});onEach(c,r)}}finally{try{tmp.destroy()}catch(e){}}}
   function status(f){if(f.k==='fake')return{st:fakeStatus(f.c),mode:f.mode||fake(f.c).mode};const s=P.st[f.c];if(!s||Date.now()-s.at>15e4)return{st:'unknown'};return s.r?{st:s.r.st||'online',mode:s.r.mode,room:s.r.room,g:s.r.g}:{st:'offline'}}
@@ -8823,7 +8823,7 @@ const FR=(()=>{
     if(k==='join'){const f=find(c),j=opt.onJoin;if(!f||!j)return;const s=status(f);close();j(f,s)}}
   function open(o){mount();opt=o||{};msg='';bad=false;el.hidden=false;draw();host();
     const reals=L().filter(f=>f.k==='real').map(f=>f.c);if(reals.length)lookup(reals.slice(0,20),()=>{if(isOpen())draw()});
-    let redraw=600;const tick=()=>{if(!isOpen())return;if(--redraw<=0){redraw=600;draw()}pad();padRaf=requestAnimationFrame(tick)};cancelAnimationFrame(padRaf);padRaf=requestAnimationFrame(tick)}
+    let redraw=600,ask=1800,asking=false;const tick=()=>{if(!isOpen())return;if(--redraw<=0){redraw=600;draw()}if(--ask<=0&&!asking){ask=1800;const r2=L().filter(f=>f.k==='real').map(f=>f.c);if(r2.length){asking=true;lookup(r2.slice(0,20),()=>{if(isOpen())draw()}).finally(()=>asking=false)}}pad();padRaf=requestAnimationFrame(tick)};cancelAnimationFrame(padRaf);padRaf=requestAnimationFrame(tick)}
   function close(){if(!el||el.hidden)return;el.hidden=true;cancelAnimationFrame(padRaf);const f=opt.onClose;opt={};if(f)try{f()}catch(e){}}
   const isOpen=()=>!!(el&&!el.hidden);
   // a gamepad can drive the panel: up/down move between buttons, A presses, B closes
