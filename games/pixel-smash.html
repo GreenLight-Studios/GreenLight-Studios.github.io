@@ -6558,6 +6558,7 @@ if(!S.lv9){S.lv=[0,4,7][S.lv|0]===undefined?4:[0,4,7][S.lv|0];S.lv9=1} // the ol
 S.stocks=clamp(S.stocks|0,0,5);if(!TIMES.includes(S.time))S.time=0;if(!S.time&&!S.stocks)S.stocks=3;
 S.lv=clamp(S.lv|0,0,CPU_LV.length-1);S.hero=clamp(S.hero|0,0,ROSTER.length-1);S.foe=clamp(S.foe|0,0,ROSTER.length-1);S.stage=clamp(S.stage|0,0,STAGES.length-1);
 const saveS=()=>{try{localStorage.setItem('pixelsmash.settings',JSON.stringify(S))}catch(e){}};
+if(S.ppend&&typeof S.ppend==='object'){const q=S.ppend,g=S.gsp||(S.gsp={}),dl=clamp(+q.dl||0,0,800000);if(typeof q.id==='string'&&dl>0)g[q.id]=Math.round(Math.max(100000,(g[q.id]===undefined?7000000:g[q.id])-dl));delete S.ppend;saveS()}
 /* shared with Pixel Smash Kart: the same online name, and one save file for both games.
    File: {format:'pixel-save', v:1, name, kart:{onl:{name,vr},set,tt}, smash:<these settings, incl. onlName and Power>} */
 const PX={KART:'psk_onl',COPY:'pixelsmash.kartcopy',PRE:'PXSAVE1:',ok:n=>typeof n==='string'&&/^[A-Za-z0-9_.\-]{3,12}$/.test(n),
@@ -8217,7 +8218,7 @@ function drawResults(){
       const ph=narrow?24:38,pw=tw+10,px=tx-5,lim=Math.min(...UI.items.map(o=>o.r.y),H)-4,py=Math.max(ty,Math.min(ty+14+s.length*12+6,lim-ph));
       ctx.fillStyle=UC.out;ctx.fillRect(px-1,py-1,pw+2,ph+2);ctx.fillStyle=UC.ink;ctx.fillRect(px,py,pw,ph);
       ctx.fillStyle=up?'#5fd078':'#ef5040';ctx.fillRect(px,py,2,ph);
-      uiText('Power  '+ROSTER[ONL.ch].name,px+6,py+4,UC.mute);
+      uiText(ONL.voided?'Voided  bad host data':'Power  '+ROSTER[ONL.ch].name,px+6,py+4,ONL.voided?'#ef5040':UC.mute);
       const sc=narrow?1:2,str=ONL.fmt(v);
       uiTextO(str,px+6,py+(narrow?14:15),k>=1&&!UI.still&&UI.t-2.3<.3&&Math.floor(UI.t*12)%2?'#ffffff':UC.cream,sc);
       if(k>0){const ds=(up?'+':'-')+ONL.fmt(Math.abs(dlt)),dw=uiW(ds);uiTextO(ds,px+pw-dw-6,py+4,up?'#8cf0a0':'#ff8a70')}
@@ -8561,6 +8562,13 @@ const NET={role:null,id:null,peers:[],err:'',inMatch:false,mySlot:{kind:'human',
     NET.send(fr);
     NET.fxOut=fighters.map(()=>[]);
   },
+  // client: the host runs the fight, so a guest keeps an eye on it. Stocks never come back and damage only
+  // drops when a fighter is KO'd. A host that breaks that is cheating, and the match won't move anyone's Power.
+  audit(fr){const m=UI.m,C=NET.chk||(NET.chk=[]);if(!m)return;
+    ALL_F.forEach((f,i)=>{if(!fighters.includes(f))return;const p=C[i],sd=!!m.sudden||m.phase==='sd';
+      if(!(typeof f.pct==='number'&&isFinite(f.pct)&&f.pct>=0&&f.pct<=999)||!(typeof f.kos==='number'&&f.kos>=0))ONL.hostBad('bad numbers');
+      else if(p&&p.sd===sd){if(f.kos<p.kos)ONL.hostBad('stock came back');else if(f.kos===p.kos&&f.pct<p.pct-.5)ONL.hostBad('damage healed')}
+      C[i]={kos:f.kos,pct:f.pct,sd}})},
   // client: take on everything the host sent since the last step
   applyFrames(){
     const L=NET.inbox;if(!L.length)return;NET.inbox=[];
@@ -8574,7 +8582,7 @@ const NET={role:null,id:null,peers:[],err:'',inMatch:false,mySlot:{kind:'human',
           else if(k==='$hold')f.holding=v<0?null:ALL_F[v];
           else if(k==='$held')f.heldBy=v<0?null:ALL_F[v];
           else if(k==='$ad')f.ad=v?JSON.parse(v):null;
-          else f[k]=v;
+          else if(k!=='__proto__'&&k!=='constructor'&&k!=='prototype')f[k]=v;
         }
       });
       (fr.x||[]).forEach((list,i)=>{const F=ALL_F[i];if(F)for(const e of list)if(e[0]!=='shot')playFx(e.map(NET.ref),F)});
@@ -8589,6 +8597,7 @@ const NET={role:null,id:null,peers:[],err:'',inMatch:false,mySlot:{kind:'human',
         const ph=fr.m.ph==='done'?'game':fr.m.ph;
         if(m.phase!==ph&&m.phase!=='done'){m.phase=ph;m.t=0;if(ph==='game'&&!say('gameover'))uiTone('game');if(ph==='time')say('time');if(ph==='sd')say('sudden')}
       }
+      if(typeof ONL!=='undefined'&&ONL.inMatch)NET.audit(fr);
     }
   },
   tick(d){
@@ -8951,7 +8960,7 @@ const ONL={
     for(const f of fighters){f.waitDrop=90;f.aiCd=30;f.aiHold=0;f.aiGuard=0;f.aiHoldB=0}
     const g=this.mode==='glory';
     UI.m=newMatchState(g?3:0,g?300:180);
-    this.inMatch=true;this.ending=false;this.powFrom=this.powTo=null;this.rollConn();
+    this.inMatch=true;this.ending=false;this.powFrom=this.powTo=null;this.voided=false;this.rollConn();this.bookLoss();
     startIntros();setScreen('match');unlockAudio();
     if(reals.length){ // a real connection has real lag, so the pretend one is off; the host runs the fight like a LAN game
       this.conn=null;
@@ -8991,21 +9000,30 @@ const ONL={
     if(q.length>want+1){const a=q.shift(),b={...q[0]};for(const k in a)if(a[k]===true)b[k]=true;q[0]=b} // catching up folds a frame in, so a tap is not lost
     return q.length>want?q.shift():q[0];
   },
+  // For Glory: the Power a loss would cost is booked as the fight starts and handed back when it ends,
+  // so closing the game mid-fight still counts as a loss. Cleared by a dropped connection, which is not yours.
+  hostBad(why){if(!this.voided)console.warn('[anti-cheat] host: '+why);this.voided=true},
+  bookLoss(){if(this.mode!=='glory'||!this.opp[0])return;const id=ROSTER[this.ch].id,me=this.pow(id),rel=clamp((this.opp[0].pow-me)/me,-.5,.5);
+    S.ppend={id,dl:Math.max(60000,Math.round(330000*(1-rel*1.4)))};saveS()},
+  clearLoss(){if(S.ppend){delete S.ppend;saveS()}},
   disconnect(real){
-    this.errReal=real||'';this.inMatch=false;this.conn=null;UI.frozen=true;POL.netOff();
+    this.clearLoss();this.errReal=real||'';this.inMatch=false;this.conn=null;UI.frozen=true;POL.netOff();
     this.errCode=(2000+(Math.random()*900|0))+'-'+String(Math.random()*9999|0).padStart(4,'0');
     setScreen('onlerr');uiTone('back');
   },
   // the match just ended: Power moves, and each opponent decides whether to stay
   matchOver(m){
     if(!this.inMatch)return;
-    POL.moDone=true;
+    POL.moDone=true;this.clearLoss();
+    // a guest double-checks the host's word on who won: the winner must have a stock left
+    if(POL.netOn&&NET.role==='client'&&m.snap&&m.snap[0]&&m.snap[0].port>=0&&UI.m&&UI.m.stocks&&!UI.m.sudden){const w=ALL_F.find(f=>f.port===m.snap[0].port);if(w&&w.kos>=UI.m.stocks)this.hostBad('winner had no stocks')}
     const won=m.snap[0].port===(POL.netOn&&NET.role==='client'?NET.myPort:0);this.won=won;
     this.powFrom=this.powTo=null;this.powTick=this.powDone=false;
     if(this.mode==='glory'&&this.opp[0]){
       const id=ROSTER[this.ch].id,me=this.pow(id),rel=clamp((this.opp[0].pow-me)/me,-.5,.5);
       let dl=won?(280000+Math.random()*260000)*(1+rel*1.4):-(220000+Math.random()*220000)*(1-rel*1.4);
       if(Math.abs(dl)<60000)dl=(dl<0?-1:1)*60000;
+      if(this.voided)dl=0;
       const nv=Math.round(Math.max(100000,me+dl));
       this.powFrom=me;this.powTo=nv;this.setPow(id,nv);
     }
@@ -9116,7 +9134,7 @@ const POL={lastF:0,role:null,peer:null,host:null,conns:{},myNet:null,idx:-1,want
     NET.role='client';NET.id=POL.myNet;NET.peers=[];NET.conns={host:{pc:{close(){}},dc:POL.dc(POL.host)}};POL.netOn=true;
     NET.clientStart(m);
     fighters.forEach((f,i)=>{f.onlName=m.names&&m.names[i]||null});
-    ONL.inMatch=true;ONL.ending=false;ONL.powFrom=ONL.powTo=null;ONL.conn=null;POL.moDone=false;
+    ONL.inMatch=true;ONL.ending=false;ONL.powFrom=ONL.powTo=null;ONL.conn=null;POL.moDone=false;ONL.voided=false;NET.chk=[];ONL.bookLoss();
   },
   // host: is the room still taking players?
   // a made-up player gives up their seat to a real one, right up until the match starts

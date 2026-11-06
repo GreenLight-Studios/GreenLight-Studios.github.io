@@ -1239,7 +1239,7 @@ function fire(k,kind,back){const a=k.h,d=back?-1:1,sx=k.x+Math.cos(a)*7*d,sy=k.y
   else proj.push({kind:'seeker',look:'seeker',x:sx,y:sy,z:2,a,sp:Math.max(168,k.spd+60),owner:k,life:12,safe:.3,idx:k.idx,target:aheadOf(k)});
   rolProjOut(proj[proj.length-1]);if(near(k))SFX.throw()}
 function launchHornet(k){proj.push({kind:'hornet',x:k.x,y:k.y,z:16,a:k.h,sp:245,owner:k,life:25,d:k.dist,mode:'track'});rolProjOut(proj[proj.length-1]);if(near(k,200))SFX.throw()}
-function useBell(k){if(RACE.mode!=='demo'){FLASH=1;SFX.zap()}if(ROL.on&&!k.rem&&RACE.hook===ONLH)rolSend({t:'bell',r:ROL.raceN,o:k.rid});for(const o of racers){if(o===k||o.rem||o.starT>0||o.rushT>0||o.finished)continue;
+function useBell(k){if(RACE.mode!=='demo'){FLASH=1;SFX.zap()}if(ROL.on&&!k.rem&&RACE.hook===ONLH)rolSend({t:'bell',r:ROL.raceN,o:k.rid});for(const o of racers){if(o.rem&&o!==k&&!k.rem&&ROL.on)acClaim(o);if(o===k||o.rem||o.starT>0||o.rushT>0||o.finished)continue;
   o.shrinkT=3.2+(racers.length-o.pos)*.55;o.spinT=Math.max(o.spinT,.5);o.item=null;o.itemN=0;o.held=null;o.orbit=[];o.roulT=0;o.gT=0;o.drift=0;o.boostT=0;if(o.isP)SFX.shrink()}}
 function hitKart(k,type){if(k.rem||k.starT>0||k.rushT>0||k.invT>0||k.fallT>0)return false;
   if(type==='tumble'){k.tumbleT=1.5;k.vz=Math.max(0,k.vz)+62;k.air=true}else k.spinT=1.05;
@@ -1375,7 +1375,7 @@ function updProj(dt){const T=TRACK;
     for(const k of racers){if(k.fallT>0)continue;let blocked=false;
       for(const q of shieldPos(k)){if(p.owner===k&&p.safe>0)break;if(Math.hypot(q.x-p.x,q.y-p.y)<4.5){consumeShield(k,q.i);p.dead=true;blocked=true;burst(p.x,p.y,2,8,['#ffffff','#9aa0a6'],30);break}}
       if(blocked)break;if(p.owner===k&&p.safe>0)continue;
-      const r=k.shrinkT>0?3:5;if(k.z<7&&Math.hypot(k.x-p.x,k.y-p.y)<r){hitKart(k,'spin');p.dead=true;burst(p.x,p.y,2,8,p.kind==='seeker'?['#ff7a2e','#ffe066']:['#3f9a5c','#9aa0a6'],35);break}
+      const r=k.shrinkT>0?3:5;if(k.z<7&&Math.hypot(k.x-p.x,k.y-p.y)<r){if(!hitKart(k,'spin')&&k.rem&&ROL.on&&p.owner&&!p.owner.rem)acClaim(k);p.dead=true;burst(p.x,p.y,2,8,p.kind==='seeker'?['#ff7a2e','#ffe066']:['#3f9a5c','#9aa0a6'],35);break}
       if(GHOST&&GHOST(p,k,r)){p.dead=true;burst(p.x,p.y,2,8,['#ffffff','#9aa0a6'],30);break}}}
   for(let i=0;i<proj.length;i++)for(let j=i+1;j<proj.length;j++){const a=proj[i],b=proj[j];if(a.dead||b.dead||a.kind==='hornet'||b.kind==='hornet')continue;if(Math.hypot(a.x-b.x,a.y-b.y)<4){a.dead=b.dead=true;burst(a.x,a.y,2,8,['#ffffff','#ffe066'],30)}}
   proj=proj.filter(p=>!p.dead)}
@@ -1694,7 +1694,7 @@ function wrap(s,maxW){const words=String(s).split(' '),out=[];let line='';for(co
 function drawSpr(sp,cx,gy,scale){scale=scale||1;ctx.drawImage(sp.c,Math.round(cx-sp.ax*scale),Math.round(gy-sp.ay*scale),Math.round(sp.c.width*scale),Math.round(sp.c.height*scale))}
 function hov(x,y,w,h,fn,setSel){const hv=uiBtn(x,y,w,h,fn);if(hv&&PTR.mv&&setSel)setSel();return hv}
 const CLS_COL={Light:'#3cb04a',Medium:'#2a7de1',Heavy:'#f08a1c'};
-function statBars(x,y,ch,vh,bw){bw=bw||90;STATS.forEach(([k,lab],i)=>{const yy=y+i*11;txt(lab,x,yy,{color:UIC.mute,ol:null});const bx=x+58;rr(bx,yy+1,bw,6,2,'#dfe4ec');
+function statBars(x,y,ch,vh,bw,rh){bw=bw||90;rh=rh||11;STATS.forEach(([k,lab],i)=>{const yy=y+i*rh;txt(lab,x,yy,{color:UIC.mute,ol:null});const bx=x+58;rr(bx,yy+1,bw,6,2,'#dfe4ec');
   const scale=vh?bw/20:bw/10,a=Math.round(ch.st[k]*scale),b=vh?Math.round(vh.st[k]*scale):0;rr(bx,yy+1,a+b,6,2,GOLD);rr(bx,yy+1,a,6,2,ch.ui);
   txt(vh?ch.st[k]+vh.st[k]:ch.st[k],bx+bw+5,yy,{color:UIC.ink,ol:null})})}
 function tag(s,x,y,col,fg){const w=txtW(s)+6;rr(x,y,w,9,2,col);txt(s,x+3,y+1,{color:fg||'#ffffff',ol:null});return w}
@@ -1831,7 +1831,7 @@ SCN.chars={enter(){for(const p of PLRS)p.vlock=false},
     if(!multi){const p=PLRS[0],ch=CHARS[p.ch],px=12,pw=Math.min(178,G.gx-26),py=30,phh=H-48;card(px,py,pw,phh,{band:ch.ui,bh:84});
       const ai=Math.floor(sceneT*7)%32,sp=sprite(getModel(ch,VEHS[p.vh]),(ai+16)%32,0,2);ctx.fillStyle='rgba(8,6,16,.3)';ctx.fillRect(px+pw/2-26,py+76,52,4);drawSpr(sp,px+pw/2,py+78,1);
       hudTxt(ch.name,px+6,py+2,16,'#ffffff');tag(ch.cls.toUpperCase(),px+pw-txtW(ch.cls.toUpperCase())-12,py+6,CLS_COL[ch.cls]);
-      wrap(ch.blurb,pw-12).slice(0,2).forEach((l,i)=>txt(l,px+6,py+90+i*10,{color:UIC.ink,ol:null}));statBars(px+6,py+114,ch,null,Math.min(70,pw-90));
+      wrap(ch.blurb,pw-12).slice(0,2).forEach((l,i)=>txt(l,px+6,py+88+i*9,{color:UIC.ink,ol:null}));statBars(px+6,py+108,ch,null,Math.min(70,pw-90),10);
       if(p.lock)hudTxt('OK!',px+pw-8,py+phh-22,16,UIC.green,'right')}
     else{const n=PLRS.length,g=6,pw=Math.floor((W-16-(n-1)*g)/n),ph=Math.min(64,H-G.gy-2*(G.ts+G.g+12)-22),y=H-ph-18;
       PLRS.forEach((p,i)=>{const x=8+i*(pw+g),ch=CHARS[p.ch];card(x,y,pw,ph,{band:p.col,bh:14,sel:false});hudTxt('P'+(p.pi+1),x+4,y,12,'#ffffff');txt(DEVNAME[p.dev],x+pw-4,y+3,{align:'right',color:'#ffffff',ol:null});
@@ -2003,7 +2003,7 @@ function frame(now){requestAnimationFrame(frame);let dt=(now-last)/1000;last=now
   if(PTR.click){for(let i=UI.length-1;i>=0;i--){const u=UI[i];if(PTR.x>=u.x&&PTR.x<u.x+u.w&&PTR.y>=u.y&&PTR.y<u.y+u.h){if(u.fn)u.fn();break}}PTR.click=false}
   PTR.mv=false;
   {const tOn=(touchMode&&SET.ovl!==false&&scene==='race'&&RACE&&!RACE.paused&&!RACE.results&&HUMANS.length<=1);if(!tOn&&TSTK.on)TSTK.reset();const c=tOn?'on':'';if(TB.className!==c){TB.className=c;if(tOn)TSTK.home()}}}
-function boot(){try{if(SET.music===false&&Music.on!==false)Music.toggle();go('boot')}catch(e){ERR=e;console.error(e)}}
+function boot(){try{vrPendApply()}catch(e){}try{if(SET.music===false&&Music.on!==false)Music.toggle();go('boot')}catch(e){ERR=e;console.error(e)}}
 
 /* ============ GLOBE (pixel earth, per-pixel sphere lookup) ============ */
 // rough coastlines as lon,lat pairs
@@ -2341,6 +2341,7 @@ const ONLH={livePause:true,pauseOpts:['Continue','Leave Room'],
   draw(){if(RACE.phase!=='wait')return;const n=racers.length,real=ROL.on?rolReadyCount():0,got=ROL.on?real:Math.min(n,1+Math.floor((1-RACE.waitT/RACE.wait0)*n*1.15));
     const cw=Math.min(200,W-40),x=(W-cw)/2,y=H-58;card(x,y,cw,26,{r:4});spinner(x+12,y+13,4,UIC.green);txt('Waiting for players'+'.'.repeat(1+Math.floor(sceneT*2)%3),x+22,y+5,{color:UIC.ink,ol:null});txt(Math.min(got,n)+' / '+n+' ready',x+22,y+15,{color:UIC.mute,ol:null})},
   update(dt){ONL.sigT-=dt;if(ONL.sigT<=0){ONL.sigT=.5+R()*.6;RACE.sig=netSig()}
+    if(RACE.phase==='race'&&!RACE.pendSet&&!RACE.results){RACE.pendSet=true;vrPendSet(racers.length)}
     if(ROL.on&&ROL.role==='host'&&RACE.phase==='wait'&&!RACE.goNow&&RACE.waitT<=0&&(rolReadyCount()>=racers.filter(k=>k.rem&&k.hum).length+1||RACE.waitT<-12)){rolSend({t:'go',r:ROL.raceN});RACE.goNow=true}
     if(ONL.errAt&&!ROL.on&&RACE.phase==='race'&&RACE.time>ONL.errAt){onlError();return true}
     if(RACE.results){ONL.autoT-=dt;if(ONL.autoT<=0){onlNext();return true}}return false},
@@ -2348,7 +2349,7 @@ const ONLH={livePause:true,pauseOpts:['Continue','Leave Room'],
   resOpts(){return['Next Race','Friends','Leave Room']},resDo(i){if(i===0)onlNext();else if(i===1)onlFriends(true);else onlLeave()},
   drawResults(){onlResults()}};
 // VR: every pair of finishers trades points, more for beating someone rated higher
-function onResults(res){if(RACE.hook!==ONLH)return;for(const k of res)if(k.rid===ONL.myRid)k.rid0='me';const v=res.map(k=>ONL.vrOf[k.rid]||1000),d=res.map(()=>0);
+function onResults(res){if(RACE.hook!==ONLH)return;vrPendClear();for(const k of res)if(k.rid===ONL.myRid)k.rid0='me';const v=res.map(k=>ONL.vrOf[k.rid]||1000),d=res.map(()=>0);
   for(let i=0;i<res.length;i++)for(let j=i+1;j<res.length;j++){const E=1/(1+Math.pow(10,(v[j]-v[i])/2600)),g=Math.round(18*(1-E))+1;d[i]+=g;d[j]-=Math.max(1,Math.round(g*.85))}
   res.forEach((k,i)=>{k.vr0=v[i];k.dvr=d[i];if(k.rid==='me'||k.rid0==='me'){ONL.vr=Math.max(1,Math.min(99999,ONL.vr+d[i]));onlSave()}else{const o=ONL.room.find(o=>'o'+o.id===k.rid);if(o)o.vr=Math.max(1,o.vr+d[i])}});
   const mine=res.find(k=>k.rid==='me'||k.rid0==='me');if(mine)for(const k of res){if(k===mine)continue;const o=ONL.room.find(o=>'o'+o.id===k.rid);if(!o||!o.fc)continue;
@@ -2362,8 +2363,9 @@ function onlResults(){const RS=RACE;ctx.fillStyle='rgba(10,12,20,.4)';ctx.fillRe
   const opts=resOptions();opts.forEach((o,i)=>{const on=i===RS.sel,bw=96,bx=W/2-(opts.length*bw+(opts.length-1)*8)/2+i*(bw+8),by=H-32;hov(bx,by,bw,16,()=>resDo(i),()=>RS.sel=i);card(bx,by,bw,16,{sel:on,r:8,bg:on?'#ffffff':'#e4e9f0'});txt(o,bx+bw/2,by+4,{align:'center',color:UIC.ink,ol:null})})}
 function onlNext(){Engine.stop();Music.rate=1;if(ROL.role==='client'){startDemo();ONL.phase='stay';go('onlsearch');return}
   let left=0;const gone=new Set((ONL.quits||[]).map(k=>k.opp&&k.opp.id));ONL.room=ONL.room.filter(o=>{const stay=o.real?!!ROL.conns[o.net]:!gone.has(o.id)&&(o.pers==='afk'?R()<.3:R()>.14);if(!stay)left++;return stay});startDemo();onlSearch(left?'left':'stay')}
-function onlLeave(){netOff();rolStop();Engine.stop();Music.rate=1;ONL.room=[];startDemo();Music.halt();loadTo(()=>go('onl'),'Leaving the room...')}
-function onlError(){netOff();rolStop();Engine.stop();Music.halt();ONL.room=[];ONL.err='Error Code: 20-'+(4000+Math.floor(R()*999));startDemo();go('onlerr')}
+function onlLeave(){if(RACE&&RACE.hook===ONLH&&RACE.pendSet&&!RACE.results)vrPendApply();netOff();rolStop();Engine.stop();Music.rate=1;ONL.room=[];startDemo();Music.halt();loadTo(()=>go('onl'),'Leaving the room...')}
+function onlError(){const kicked=ROL.kicked;ROL.kicked=false;if(kicked)vrPendApply();else vrPendClear();netOff();rolStop();Engine.stop();Music.halt();ONL.room=[];ONL.err='Error Code: 20-'+(4000+Math.floor(R()*999));startDemo();go('onlerr')
+  if(kicked)POP.show('Removed from the room',`<p>The host's game spotted race data it could not trust and took you out of the room. The race counts as a loss.</p><button class="go" id="kkOk">OK</button>`),POP.$('kkOk').onclick=()=>POP.hide()}
 SCN.onlerr={update(){if(hit('ok')||hit('back')){SFX.back();go('onl')}},
   draw(){drawSpace();const cw=Math.min(260,W-40),x=(W-cw)/2,y=H/2-40;card(x,y,cw,80,{band:UIC.red,bh:16});hudTxt('COMMUNICATION ERROR',x+6,y,12,'#ffffff');txt('Unable to continue. The connection to',x+10,y+24,{color:UIC.ink,ol:null});txt('the other players was lost.',x+10,y+34,{color:UIC.ink,ol:null});txt(ONL.err||'',x+10,y+50,{color:UIC.mute,ol:null});
     const bx=x+cw/2-30;hov(bx,y+62,60,14,()=>go('onl'));card(bx,y+62,60,14,{sel:true,r:7});txt('OK',x+cw/2,y+65,{align:'center',color:UIC.ink,ol:null})}};
@@ -2633,14 +2635,14 @@ const PXMM={lib:null,
       me.destroy();
       for(const i of free){if(stop())return null;const p=await this.open(base+'-'+i);if(p&&p!=='taken')return{role:'host',peer:p}}}
     return null}};
-const ROL={on:false,role:null,peer:null,myId:null,conns:{},host:null,want:false,tok:0,busy:false,rt:0,vt:0,raceN:0,own:{},ready:{},st:0,myEnt:null,lat:.06};
+const ROL={on:false,role:null,peer:null,myId:null,conns:{},host:null,want:false,tok:0,busy:false,rt:0,vt:0,raceN:0,own:{},ready:{},st:0,myEnt:null,lat:.06,ac:{},ban:{},banFc:{},kicked:false};
 // what a console sends about the karts it drives
 const RF=['x','y','wz','z','h','ma','spd','air','vz','drift','dTier','boostT','starT','shrinkT','squashT','invT','rushT','spinT','spinA','tumbleT','fallT','lean','steerVis','trickT','trickK','trickD','held','orbit','orbA','lap','dist','idx','finished','finishT','item','itemN','roulT','gT','hits','msg','msgT','wrongT','hornetWarn','pos'];
 const RFX=RF.filter(f=>!['x','y','wz','z','h','ma','spd','spinA','orbA','finished','finishT','lap','dist','idx','pos'].includes(f));
 function rolPreload(){PXMM.load()}
 function rolBase(){const L=ONL.loc||myLoc(),z=L.lon<-30?'am':L.lon<60?'eu':'as';return 'pixelsmashkart-v1-'+(ONL.mode==='region'?z:'w')}
 function rolMe(){const p=PLRS[0]||{ch:0,vh:0},L=ONL.loc||myLoc();return{name:ONL.name,vr:ONL.vr,ch:p.ch,vh:p.vh,code:L.code,lat:L.lat,lon:L.lon,fc:FR.code(),fl:FR.mine()}}
-function rolSearch(){if(ROL.on||ROL.busy||typeof RTCPeerConnection==='undefined')return;ROL.busy=true;ROL.want=true;const tok=++ROL.tok;
+function rolSearch(){if(ROL.on||ROL.busy||typeof RTCPeerConnection==='undefined')return;ROL.busy=true;ROL.kicked=false;ROL.want=true;const tok=++ROL.tok;
   PXMM.find(rolBase(),6,Object.assign({t:'hello',g:'psk1'},rolMe()),()=>!ROL.want||ROL.tok!==tok).then(r=>{ROL.busy=false;if(!r)return;
     const late=!ROL.want||ROL.tok!==tok||r.role==='client'&&!(scene==='onlsearch'&&(ONL.phase==='search'||ONL.phase==='found'));
     if(late){try{r.peer.destroy()}catch(e){}return}
@@ -2649,11 +2651,11 @@ function rolSearch(){if(ROL.on||ROL.busy||typeof RTCPeerConnection==='undefined'
     if(r.role==='host')r.peer.on('connection',c=>rolIncoming(c));
     else{ROL.host=r.conn;r.conn.on('data',m=>rolRecv(m,'h'));r.conn.on('close',()=>rolLost('h'));SFX.got()}}).catch(()=>{ROL.busy=false})}
 function rolStop(){ROL.want=false;ROL.tok++;const was=ROL.on;for(const id in ROL.conns)try{ROL.conns[id].close()}catch(e){}try{ROL.host&&ROL.host.close()}catch(e){}try{ROL.peer&&ROL.peer.destroy()}catch(e){}
-  Object.assign(ROL,{on:false,role:null,peer:null,myId:null,conns:{},host:null,own:{},ready:{},myEnt:null});if(was)ONL.room=ONL.room.filter(o=>!o.real)}
+  Object.assign(ROL,{on:false,role:null,peer:null,myId:null,conns:{},host:null,own:{},ready:{},myEnt:null,ac:{}});if(was)ONL.room=ONL.room.filter(o=>!o.real)}
 function rolSend(m,skip){if(!ROL.on)return;if(ROL.role==='host'){for(const id in ROL.conns){if(id===skip)continue;const c=ROL.conns[id];if(c.open)try{c.send(m)}catch(e){}}}else if(ROL.host&&ROL.host.open)try{ROL.host.send(m)}catch(e){}}
 // host: someone knocked. Let them in while the room is still forming
 function rolIncoming(c){c.on('data',m=>{if(!m)return;
-    if(m.t==='hello'&&!ROL.conns[c.peer]){const open=scene==='onlsearch'&&['search','found','stay','left'].includes(ONL.phase)&&ONL.room.filter(o=>o.real).length<11&&m.g==='psk1';
+    if(m.t==='hello'&&!ROL.conns[c.peer]){const open=scene==='onlsearch'&&['search','found','stay','left'].includes(ONL.phase)&&ONL.room.filter(o=>o.real).length<11&&m.g==='psk1'&&!ROL.ban[c.peer]&&!(FR.kind(m.fc)==='real'&&ROL.banFc[FR.clean(m.fc)]);
       if(!open){try{c.send({t:'full'})}catch(e){}setTimeout(()=>{try{c.close()}catch(e){}},400);return}
       ROL.conns[c.peer]=c;const nm=/^[A-Za-z0-9_.\-]{1,12}$/.test(m.name||'')?m.name:'Player';
       const o={id:ONL.nid++,net:c.peer,real:true,name:nm,city:'',code:String(m.code||'--').slice(0,3),lat:+m.lat||0,lon:+m.lon||0,vr:clamp(m.vr|0,1,99999),ch:clamp(m.ch|0,0,CHARS.length-1),vh:clamp(m.vh|0,0,VEHS.length-1),born:sceneT,pers:'chill',fc:FR.kind(m.fc)==='real'?FR.clean(m.fc):null,fl:Array.isArray(m.fl)?m.fl.slice(0,100).map(String):null};FR.meet(o);
@@ -2677,7 +2679,8 @@ function rolLost(id){if(!ROL.on)return;
   else{rolStop();if(scene==='race'&&RACE&&RACE.hook===ONLH&&!RACE.results)onlError();else if(scene==='onlsearch'||scene==='onlvote'||scene==='race'||scene==='loading'){ONL.room=[];startDemo();onlSearch('search')}}}
 const rolK=rid=>{if(scene!=='race'||!RACE||RACE.hook!==ONLH)return null;for(const k of racers)if(k.rid===rid)return k;return null};
 function rolRecv(m,from){if(!m||!ROL.on)return;const H=ROL.role==='host';
-  if(H&&(m.t==='k'||m.t==='p'||m.t==='bell'||m.t==='sh'))rolSend(m,from);
+  if(H&&(m.t==='k'||m.t==='p'||m.t==='bell'||m.t==='sh')){if(!acCheck(m,from))return;rolSend(m,from)}
+  if(m.t==='kick'){if(!H)ROL.kicked=true;return}
   if(m.r!=null&&m.t!=='race'&&m.r!==ROL.raceN)return;
   switch(m.t){
     case'room':if(!H)rolApplyRoom(m);break;
@@ -2693,6 +2696,72 @@ function rolRecv(m,from){if(!m||!ROL.on)return;const H=ROL.role==='host';
     case'bell':{const k=rolK(m.o);if(k&&k.rem)useBell(k)}break;
     case'sh':{const k=rolK(m.o);if(k&&!k.rem)consumeShield(k,m.i)}break;
     case'quit':if(!H){const k=rolK(m.o);if(k)netQuit(k)}break}}
+/* ---- anti-cheat: the host is the referee ----
+   Every console drives its own kart, so the host checks what guests say about theirs before passing it on:
+   you may only speak for your own kart, timers can't outlast the items that start them, karts can't outrun
+   their top speed, nobody moves before the start, and a finish needs three real laps. Items need an item.
+   The host's own shells also keep score: a kart that never reacts to being hit is ignoring hits.
+   Each broken rule is a strike (at most one per rule per second); three strikes and the guest is removed. */
+const PKINDS=['pebble','seeker','hornet'],ACCAP={starT:7.6,rushT:7.1,invT:2.3,boostT:4,shrinkT:12,spinT:1.5,tumbleT:1.6,squashT:1.5,gT:7.6};
+function acInit(k){return k.ac={h:[],b:null,p0:null,fin:false,ft:0,bell:-99,sh:-99,tok:3,tokT:RACE.t,frz:0,claims:[],last:[]}}
+function acPeer(id){return ROL.ac[id]||(ROL.ac[id]={s:0,last:{},why:[]})}
+function acStrike(id,why,w){const P=acPeer(id),now=performance.now();if(P.last[why]&&now-P.last[why]<1000)return;P.last[why]=now;P.s+=w||1;P.why.push(why);
+  console.warn('[anti-cheat] '+id+': '+why+' ('+P.s+'/3)');if(P.s>=3)acKick(id)}
+function acKick(id){const c=ROL.conns[id];if(!c)return;ROL.ban[id]=1;const o=ONL.room.find(o=>o.net===id);if(o&&o.fc)ROL.banFc[o.fc]=1;
+  try{c.send({t:'kick'})}catch(e){}rolLost(id);setTimeout(()=>{try{c.close()}catch(e){}},300)}
+// did this kart hold one of these items in its last few snapshots?
+function acHad(k,items){const A=k.ac;if(!A)return false;for(const S of A.h){if(items.includes(S.item))return true;if(items.includes('shot')&&(S.held||Array.isArray(S.orbit)&&S.orbit.length))return true}return false}
+const acSafe=S=>S.starT>0||S.rushT>0||S.invT>0||S.fallT>0||S.spinT>0||S.tumbleT>0||S.squashT>0||S.finished;
+// host: one of its own shells or bells just caught a guest's kart
+function acClaim(k){if(!k.rem||!k.ac||ROL.role!=='host')return;const S=k.ac.h[k.ac.h.length-1];if(!S||acSafe(S)||k.ac.claims.length>6)return;k.ac.claims.push({t:RACE.t,ok:false})}
+function acSnap(k,a,from){if(!k||!k.rem)return false;const S={};RF.forEach((f,i)=>S[f]=a[i+1]);
+  for(const f of RF){const v=S[f];if(typeof v==='number'&&!isFinite(v))return false}
+  if(typeof S.x!=='number'||typeof S.y!=='number'||typeof S.dist!=='number'||typeof S.spd!=='number')return false;
+  const A=k.ac||acInit(k),T=TRACK,now=RACE.t,bad=(w,n)=>acStrike(from,w,n),prev=A.h[A.h.length-1],vm=k.P.vmax*2.2;
+  for(const f in ACCAP)if(typeof S[f]==='number'&&S[f]>ACCAP[f]){S[f]=ACCAP[f];bad(f+' too long')}
+  if(Math.abs(S.spd)>vm){S.spd=Math.sign(S.spd)*vm;bad('too fast')}
+  if(RACE.phase!=='race'&&RACE.phase!=='done'){if(!A.p0)A.p0={x:S.x,y:S.y,d:S.dist};else if(Math.hypot(S.x-A.p0.x,S.y-A.p0.y)>8||S.dist>A.p0.d+2){bad('moved before the start');return false}}
+  if(prev){
+    if(S.starT>prev.starT+.05&&!acHad(k,['prism'])){S.starT=0;bad('star with no prism')}
+    if(S.rushT>prev.rushT+.05&&!acHad(k,['boulder'])){S.rushT=0;bad('rush with no boulder')}
+    // invincibility only runs down, unless something new just happened to the kart
+    const fresh=S.spinT>prev.spinT||S.tumbleT>prev.tumbleT||S.squashT>prev.squashT||S.fallT>0||prev.fallT>0||prev.rushT>0;
+    if(S.invT>0&&prev.invT>0&&S.invT>=prev.invT&&!fresh){if(++A.frz>=8){A.frz=0;bad('frozen invincibility')}}else A.frz=0;
+    const dt=Math.max(.02,now-prev.rt),warp=S.fallT>0||prev.fallT>0;
+    if(!warp&&Math.hypot(S.x-prev.x,S.y-prev.y)>vm*dt+25){bad('teleport');return false}
+    if(S.dist-prev.dist>vm*dt/T.SP+10){bad('skipped track');return false}}
+  if(RACE.phase==='race'){if(!A.b)A.b={t:now,d:S.dist};else if(now-A.b.t>=1){if(S.dist-A.b.d>vm*(now-A.b.t)/T.SP+6){bad('too much ground');return false}A.b={t:now,d:S.dist}}}
+  // a finish needs every lap driven, and it happens now, not whenever the guest says
+  if(S.finished&&!A.fin){if(S.dist<RACE.laps*T.N-2||RACE.phase!=='race'&&RACE.phase!=='done'){bad('fake finish',2);return false}
+    A.fin=true;A.ft=S.finishT>=RACE.time-3&&S.finishT<=RACE.time+3?S.finishT:rnd2(RACE.time)}
+  if(A.fin){S.finished=true;S.finishT=A.ft}else{S.finished=false;S.finishT=0}
+  // the host's hits: did the kart react within a second?
+  for(const c of A.claims){if(acSafe(S))c.ok=true}
+  // lag lets the odd shell miss on their screen, but not six of the last eight
+  A.claims=A.claims.filter(c=>{if(now-c.t<1.1)return true;A.last.push(c.ok?1:0);if(A.last.length>8)A.last.shift();return false});
+  if(A.last.length>=6&&A.last.filter(x=>!x).length>=6){A.last=[];bad('ignores hits',2)}
+  S.rt=now;A.h.push(S);if(A.h.length>3)A.h.shift();
+  RF.forEach((f,i)=>a[i+1]=S[f]);return true}
+function acCheck(m,from){if(m.r!==ROL.raceN||scene!=='race'||!RACE||RACE.hook!==ONLH)return false;const mine=rid=>ROL.own[rid]===from;
+  switch(m.t){
+    case'k':if(!Array.isArray(m.K))return false;m.K=m.K.filter(a=>Array.isArray(a)&&a.length===RF.length+1&&mine(a[0])&&acSnap(rolK(a[0]),a,from));return m.K.length>0;
+    case'p':{const k=rolK(m.o);if(!k||!mine(m.o)||!PKINDS.includes(m.kind))return false;const A=k.ac||acInit(k);
+      for(const f of ['x','y','z','a','sp','life'])if(typeof m[f]!=='number'||!isFinite(m[f]))return false;
+      if(Math.hypot(m.x-k.x,m.y-k.y)>60)return false;m.sp=clamp(m.sp,0,480);m.life=clamp(m.life,0,25);m.safe=clamp(+m.safe||0,0,.5);
+      A.tok=Math.min(3,A.tok+(RACE.t-A.tokT)*1.5);A.tokT=RACE.t;
+      if(!acHad(k,m.kind==='hornet'?['hornet']:['shot','pebble','seeker','pebble3','seeker3'])||A.tok<1){acStrike(from,'item out of nowhere');return false}
+      A.tok--;return true}
+    case'bell':{const k=rolK(m.o);if(!k||!mine(m.o))return false;const A=k.ac||acInit(k);
+      if(!acHad(k,['bell'])||RACE.t-A.bell<5){acStrike(from,'bell out of nowhere');return false}A.bell=RACE.t;return true}
+    case'sh':{const k=rolK(m.o),me=racers.find(o=>mine(o.rid));if(!k||!me||!Number.isInteger(m.i)||m.i<-1||m.i>2)return false;
+      const A=k.ac||acInit(k);if(RACE.t-A.sh<.25||Math.hypot(me.x-k.x,me.y-k.y)>60)return false;A.sh=RACE.t;return true}}
+  return false}
+// VR you would lose for coming last is booked when the lights go green, and handed back at the results.
+// Pulling the plug or leaving mid-race keeps it lost; a host that vanishes is not your fault.
+function vrPendSet(n){try{localStorage.setItem('psk_vrpend',JSON.stringify({v:Math.max(5,(n-1)*9),at:Date.now()}))}catch(e){}}
+function vrPendClear(){try{localStorage.removeItem('psk_vrpend')}catch(e){}}
+function vrPendApply(){let p=null;try{p=JSON.parse(localStorage.getItem('psk_vrpend')||'null')}catch(e){}vrPendClear();
+  const v=p&&+p.v>0?Math.min(250,Math.round(+p.v)):0;if(v){ONL.vr=Math.max(1,ONL.vr-v);onlSave()}return v}
 // client: the host's roll lands on the same course on every screen
 function rolRoll(m){if(ONL.myVote<0)ONL.myVote=ONL.cur;const all=[{me:true,v:ONL.myVote}].concat(ONL.votes),n=all.length;let w=m.win===ROL.myEnt?0:all.findIndex(a=>a.o&&a.o.id===m.win);if(w<0)w=0;
   const base=12+n*2;ONL.roll={all,i:0,sp:.05,t:0,steps:base+((w-base)%n+n)%n,done:false,fix:m.track}}

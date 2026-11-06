@@ -8,7 +8,7 @@ window.GL_BUILDS = {
       "html": {
         "file": "games/pixel-smash.html",
         "saveAs": "Pixel Smash.html",
-        "size": 3042254,
+        "size": 3044401,
         "date": "2026-11-06"
       },
       "apk": {
@@ -22,7 +22,7 @@ window.GL_BUILDS = {
       "html": {
         "file": "games/pixel-smash-kart.html",
         "saveAs": "Pixel Smash Kart.html",
-        "size": 1946574,
+        "size": 1954081,
         "date": "2026-11-06"
       },
       "apk": {
@@ -34,6 +34,6 @@ window.GL_BUILDS = {
   },
   "bundle": {
     "file": "downloads/GreenlightStudios-PixelGames-v1.0.zip",
-    "size": 3411014
+    "size": 3414744
   }
 };
