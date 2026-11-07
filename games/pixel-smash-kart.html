@@ -70,7 +70,7 @@ const ADS=(()=>{
    can't go online until it is updated. If the site can't be reached, the game goes online anyway: a site that is
    down shouldn't stop anyone playing. CUR and SITE are set by set_version.py. Portal builds skip the check. */
 const VER=(()=>{
-  const CUR='1.0',SITE='https://greenlight-studios.github.io';
+  const CUR='1.1',SITE='https://greenlight-studios.github.io';
   let el=null,busy=false,cache=null,cacheT=0,padRaf=0;
   // a copy served from the site itself reads the file next to it; other copies (download, app) ask SITE
   const onSite=()=>/^https?:$/.test(location.protocol)&&/\/games\/[^/]*$/.test(location.pathname);
@@ -576,18 +576,18 @@ const STATS=[['spd','Speed'],['acc','Accel'],['wgt','Weight'],['hnd','Handling']
 const CHARS=[
   {id:'runner',name:'Runner',cls:'Medium',kc:'#2f6fbf',ui:'#58a2e4',blurb:'Balanced. Never misses a corner.',st:{spd:7,acc:5,wgt:6,hnd:5,trc:5,mt:5}},
   {id:'cragg',name:'Cragg',cls:'Heavy',kc:'#55607a',ui:'#9aa0a6',blurb:'Rock-solid top speed. Shoves everyone.',st:{spd:9,acc:2,wgt:10,hnd:3,trc:7,mt:3}},
-  {id:'clover',name:'Clover',cls:'Light',kc:'#3f9a5c',ui:'#7cc66e',blurb:'Quick off the line. Turns on a leaf.',st:{spd:3,acc:9,wgt:2,hnd:8,trc:5,mt:8}},
-  {id:'harrow',name:'Harrow',cls:'Medium',kc:'#8a7236',ui:'#e3bd4a',blurb:'Long legs, steady grip on rough ground.',st:{spd:6,acc:5,wgt:5,hnd:5,trc:7,mt:6}},
-  {id:'sorrel',name:'Sorrel',cls:'Light',kc:'#6a3a9a',ui:'#b088e0',blurb:'Sure-footed witch. Strong drift charge.',st:{spd:4,acc:7,wgt:3,hnd:7,trc:8,mt:7}},
-  {id:'vespa',name:'Vespa',cls:'Medium',kc:'#c9951e',ui:'#f0c840',blurb:'Sharp handling, slippery footing.',st:{spd:6,acc:6,wgt:5,hnd:7,trc:3,mt:7}},
+  {id:'clover',name:'Clover',cls:'Light',kc:'#3f9a5c',ui:'#7cc66e',blurb:'Quick off the line. Turns on a leaf.',st:{spd:4,acc:9,wgt:3,hnd:8,trc:5,mt:8}},
+  {id:'harrow',name:'Harrow',cls:'Medium',kc:'#8a7236',ui:'#e3bd4a',blurb:'Long legs, steady grip on rough ground.',st:{spd:6,acc:6,wgt:5,hnd:5,trc:7,mt:6}},
+  {id:'sorrel',name:'Sorrel',cls:'Light',kc:'#6a3a9a',ui:'#b088e0',blurb:'Sure-footed witch. Strong drift charge.',st:{spd:5,acc:7,wgt:4,hnd:7,trc:7,mt:7}},
+  {id:'vespa',name:'Vespa',cls:'Medium',kc:'#c9951e',ui:'#f0c840',blurb:'Sharp handling, slippery footing.',st:{spd:6,acc:5,wgt:5,hnd:6,trc:3,mt:7}},
 ];
 const VEHS=[
-  {id:'pebble',name:'Pebble Kart',type:'kart',drift:'out',desc:'Standard frame. No surprises.',st:{spd:5,acc:5,wgt:5,hnd:5,trc:5,mt:5}},
+  {id:'pebble',name:'Pebble Kart',type:'kart',drift:'out',desc:'Standard frame. No surprises.',st:{spd:6,acc:5,wgt:5,hnd:5,trc:5,mt:6}},
   {id:'boulder',name:'Boulderback',type:'kart',drift:'out',desc:'Hewn from stone. Heavy and fast.',st:{spd:8,acc:2,wgt:8,hnd:3,trc:6,mt:3}},
-  {id:'thistle',name:'Thistle Buggy',type:'kart',drift:'out',desc:'Big tyres. Laughs at grass.',st:{spd:3,acc:8,wgt:3,hnd:6,trc:9,mt:6}},
-  {id:'ember',name:'Ember Racer',type:'kart',drift:'out',desc:'Low and long. Slides like butter.',st:{spd:9,acc:3,wgt:6,hnd:4,trc:2,mt:4}},
+  {id:'thistle',name:'Thistle Buggy',type:'kart',drift:'out',desc:'Big tyres. Laughs at grass.',st:{spd:4,acc:8,wgt:3,hnd:7,trc:8,mt:6}},
+  {id:'ember',name:'Ember Racer',type:'kart',drift:'out',desc:'Low and long. Slides like butter.',st:{spd:9,acc:3,wgt:5,hnd:4,trc:2,mt:4}},
   {id:'moth',name:'Moth Glider',type:'kart',drift:'out',desc:'Wing panels. Huge drift sparks.',st:{spd:4,acc:6,wgt:3,hnd:8,trc:4,mt:9}},
-  {id:'stinger',name:'Stinger',type:'bike',drift:'in',desc:'Sport bike. Cuts the inside line.',st:{spd:7,acc:5,wgt:4,hnd:7,trc:3,mt:4}},
+  {id:'stinger',name:'Stinger',type:'bike',drift:'in',desc:'Sport bike. Cuts the inside line.',st:{spd:6,acc:5,wgt:4,hnd:7,trc:3,mt:4}},
   {id:'wisp',name:'Wisp Scooter',type:'bike',drift:'in',desc:'Feather-light. Turns on the spot.',st:{spd:4,acc:8,wgt:2,hnd:9,trc:5,mt:5}},
   {id:'gale',name:'Gale Cycle',type:'bike',drift:'out',desc:'All-round bike. Wide, smooth drift.',st:{spd:5,acc:6,wgt:4,hnd:6,trc:5,mt:6}},
   {id:'hog',name:'Iron Hog',type:'bike',drift:'out',desc:'Chrome chopper. Pure top speed.',st:{spd:9,acc:2,wgt:9,hnd:2,trc:6,mt:3}},
@@ -605,7 +605,8 @@ const ODDS=[
 ];
 const CCS=[{name:'50cc',sp:74,skill:.55},{name:'100cc',sp:88,skill:.78},{name:'150cc',sp:102,skill:1}];
 function derive(ch,vh,cc){const s={};for(const [k] of STATS)s[k]=(ch.st[k]+vh.st[k])/20;const base=CCS[cc].sp;
-  return{vmax:base*(.86+.28*s.spd),acc:.6+1.7*s.acc,mass:.6+1.4*s.wgt,turn:1.5+1.3*s.hnd,grip:8+14*s.trc,offroad:.4+.38*s.trc,
+  // v1.1: top speed spread halved (was .86+.28*spd). Sims showed speed swamped every other stat: light racers ran ~15% slower per lap
+  return{vmax:base*(.968+.10*s.spd),acc:.6+1.7*s.acc,mass:.6+1.4*s.wgt,turn:1.5+1.3*s.hnd,grip:8+14*s.trc,offroad:.4+.38*s.trc,
     mtRate:.75+.95*s.mt,mtDur:.75+.65*s.mt,inside:vh.drift==='in',bike:vh.type==='bike'}}
 
 /* ============ VOXEL MODELS ============ */
@@ -1198,6 +1199,8 @@ function setupRace(cfg){
   for(const k of racers)k.wobP=R()*TAU;
   HUMANS=racers.filter(k=>k.isP);PLAYER=HUMANS[0]||racers[0];
   RACE=Object.assign({},cfg,{laps:cfg.mode==='demo'?999:LAPS,t:0,phase:cfg.mode==='demo'?'race':'intro',time:0,ct:0,doneT:0,results:null,paused:false,msg:null,msgT:0,accT:null,beep:-1,goT:0,sel:0});
+  // Race music: Shuffle picks any course song (Math.random, so online races keep the shared seed)
+  RACE.song=cfg.mode!=='demo'&&SET.rmus==='shuffle'?RACE_SONGS[Math.floor(Math.random()*RACE_SONGS.length)]:null;
   if(cfg.mode==='tt'){PLAYER.item='carrot';PLAYER.itemN=3;try{RACE.best0=JSON.parse(localStorage.getItem('psk_tt_'+T.id)||'null')}catch(e){}}
   for(const b of T.boxList)b.t=0;
   for(const k of racers)for(let a=0;a<32;a++)sprite(k.m,a,0,1);
@@ -1460,7 +1463,7 @@ function raceStep(dt,pc){const T=TRACK;RACE.t+=dt;
   else if(RACE.phase==='intro'){if(!RACE.jin&&RACE.mode!=='demo'){RACE.jin=1;SFX.intro()}if(RACE.t>INTRO_T){RACE.phase='count';RACE.ct=0;RACE.beep=-1}}
   else if(RACE.phase==='count'){RACE.ct+=dt;const b=Math.floor(RACE.ct);if(b!==RACE.beep&&b<3){RACE.beep=b;SFX.beep()}
     for(const k of racers)if(k.hum){const c=ctrlOf(k);if(c&&c.acc){if(k.accT==null)k.accT=RACE.ct}else k.accT=null}
-    if(RACE.ct>=3){RACE.phase='race';RACE.time=0;RACE.goT=1;SFX.go();Engine.start();Music.play(T.th.song);rocketStarts()}}
+    if(RACE.ct>=3){RACE.phase='race';RACE.time=0;RACE.goT=1;SFX.go();Engine.start();Music.play(raceSong());rocketStarts()}}
   else RACE.time+=dt;
   if(RACE.goT>0)RACE.goT-=dt;
   let lead=null;for(const k of racers)if(k.hum&&!k.finished&&(!lead||k.dist>lead.dist))lead=k;
@@ -1472,7 +1475,7 @@ function raceStep(dt,pc){const T=TRACK;RACE.t+=dt;
     updKart(k,c,dt);if(!k.nl)kartFX(k)}
   kartCollisions();shieldHits();for(const k of racers)if(typeAt(k.x,k.y)===WALL){k.x=k.ox;k.y=k.oy}
   updProj(dt);updParts(dt);updBoxes(dt);rank();
-  if(RACE.phase==='race'&&RACE.mode!=='demo'){Music.play(HUMANS.some(k=>k.starT>0&&!k.finished)?'star':T.th.song)}
+  if(RACE.phase==='race'&&RACE.mode!=='demo'){Music.play(HUMANS.some(k=>k.starT>0&&!k.finished)?'star':raceSong())}
   if(RACE.phase==='done'){RACE.doneT+=dt;if(!RACE.results&&RACE.doneT>3.2&&(racers.every(k=>k.finished)||RACE.doneT>9)){finalizeResults();RACE.sel=0}}
   updateCamera(dt);
   if(RACE.phase==='race'&&RACE.mode!=='demo'&&PLAYER&&!PLAYER.finished)Engine.set(clamp(PLAYER.spd/PLAYER.P.vmax,0,1.5),!!PLAYER.drift,PLAYER.boostT>0);
@@ -1985,10 +1988,38 @@ SCN.howto={update(dt){stepDemo(dt);if(rep('ml',dt)){SEL.page=(SEL.page+2)%3;SFX.
       ['Host: share the invite code with the other computer.','Join: paste the invite, then send your reply code back.','Works on the same network, up to 4 players.'].forEach((l,i)=>c(l,8,106+i*11))}
     uiFoot([['lr','Page'],['back','Back']])}};
 function setOpts(){return[{n:'Fullscreen',v:isFS()?'ON':'OFF',f:()=>{SET.fs=!isFS();setFS(SET.fs);saveSet()}},{n:'Music',v:Music.on===false?'OFF':'ON',f:()=>{Music.toggle();SET.music=Music.on!==false;saveSet()}},
-  {n:'Touch controls',v:SET.ovl===false?'OFF':'ON',f:()=>{SET.ovl=SET.ovl===false;saveSet()}},{n:'Online name',v:(typeof ONL!=='undefined'&&ONL.name)||'-',f:()=>{if(typeof onlAskName==='function')onlAskName(()=>{})}},{n:'Save data',v:'',f:()=>{if(typeof saveMenu==='function')saveMenu()}},{n:'Clear records',v:'',f:()=>{try{for(const T of TRACKS)localStorage.removeItem('psk_tt_'+T.id)}catch(e){}SFX.back()}}]}
+  {n:'Race music',v:SET.rmus==='shuffle'?'SHUFFLE':'COURSE',f:()=>{SET.rmus=SET.rmus==='shuffle'?'course':'shuffle';saveSet()}},{n:'Music player',v:'',f:()=>go('jbox')},
+  {n:'Touch controls',v:SET.ovl===false?'OFF':'ON',f:()=>{SET.ovl=SET.ovl===false;saveSet()}},{n:'Online name',v:(typeof ONL!=='undefined'&&ONL.name)||'-',f:()=>{if(typeof onlAskName==='function')onlAskName(()=>{})}},{n:'Save data',v:'',f:()=>{if(typeof saveMenu==='function')saveMenu()}},{n:'Clear records',v:CLRARM>performance.now()?'PRESS AGAIN':'',f:()=>{if(!(CLRARM>performance.now())){CLRARM=performance.now()+2500;SFX.move();return}CLRARM=0;try{for(const T of TRACKS)localStorage.removeItem('psk_tt_'+T.id)}catch(e){}SFX.back()}}]}
+let CLRARM=0; // v1.1: Clear records asks for a second press within 2.5 s
 SCN.set={update(dt){stepDemo(dt);const n=setOpts().length;if(rep('mu',dt)){SEL.set=(SEL.set+n-1)%n;SFX.move()}if(rep('md',dt)){SEL.set=(SEL.set+1)%n;SFX.move()}if(hit('ok')){SFX.ok();setOpts()[SEL.set].f()}if(hit('back')){SFX.back();go('main')}},
-  draw(){menuBG();uiHead('SETTINGS','',UIC.blue);const O=setOpts(),cw=Math.min(260,W-40),x=(W-cw)/2;O.forEach((o,i)=>{const y=34+i*26,on=i===SEL.set;hov(x,y,cw,20,()=>{SEL.set=i;SFX.ok();o.f()},()=>SEL.set=i);card(x+(on?4:0),y,cw,20,{sel:on,r:4});
-    txt(o.n,x+10+(on?4:0),y+6,{color:UIC.ink,ol:null});if(o.v)tag(o.v,x+cw-txtW(o.v)-14+(on?4:0),y+5,o.v==='ON'?UIC.green:o.v==='OFF'?'#8a94a4':UIC.blue)});uiFoot([['ok','Change'],['back','Back']])}};
+  draw(){menuBG();uiHead('SETTINGS','',UIC.blue);const O=setOpts(),cw=Math.min(260,W-40),x=(W-cw)/2,st=Math.max(17,Math.min(26,Math.floor((H-48)/O.length))),bh=Math.min(20,st-2),ty=Math.floor((bh-8)/2);O.forEach((o,i)=>{const y=28+i*st,on=i===SEL.set;hov(x,y,cw,bh,()=>{SEL.set=i;SFX.ok();o.f()},()=>SEL.set=i);card(x+(on?4:0),y,cw,bh,{sel:on,r:4});
+    txt(o.n,x+10+(on?4:0),y+ty,{color:UIC.ink,ol:null});if(o.v)tag(o.v,x+cw-txtW(o.v)-14+(on?4:0),y+ty-1,o.v==='ON'?UIC.green:o.v==='OFF'?'#8a94a4':UIC.blue)});uiFoot([['ok','Change'],['back','Back']])}};
+/* ============ MUSIC PLAYER (v1.1) ============ */
+const JB=[['title','Title Theme','Main menu'],['meadow','Meadowrun','Course'],['cinder','Cinderhold','Course'],['frost','Frostmere','Course'],['wharf','Lantern Wharf','Course'],['deep','Glimmerdeep','Course'],['spire','Sunspire','Course'],
+  ['star','Prism Power','Prism Shard'],['wfc','Worldwide','Online lobby'],['wfcsel','Course Vote','Online'],['results','Results','Podium']];
+const RACE_SONGS=['meadow','cinder','frost','wharf','deep','spire'];
+// the song a race plays: its own course song, or one picked at random when Race music is set to Shuffle
+function raceSong(){return(RACE&&RACE.song)||TRACK.th.song}
+let JBNOW=null;
+function jbPlay(i){const s=JB[i];if(!s)return;if(Music.on===false){Music.toggle();SET.music=true;saveSet()}audioInit();Music.rate=1;Music.halt();Music.play(s[0]);JBNOW=s[0];SFX.ok()}
+SCN.jbox={enter(){SEL.jb=SEL.jb||0;JBNOW=null},
+  update(dt){stepDemo(dt);const n=JB.length,rows=Math.ceil(n/2),i=SEL.jb;
+    if(rep('mu',dt)){SEL.jb=(i+n-1)%n;SFX.move()}if(rep('md',dt)){SEL.jb=(i+1)%n;SFX.move()}
+    if(rep('ml',dt)||rep('mr',dt)){SEL.jb=i<rows?Math.min(n-1,i+rows):i-rows;SFX.move()}
+    if(hit('ok'))jbPlay(SEL.jb);
+    if(hit('item')&&JBNOW){Music.halt();JBNOW=null;SFX.back()}
+    if(hit('back')){SFX.back();JBNOW=null;Music.rate=1;Music.halt();Music.play('title');go('set')}},
+  draw(){menuBG();uiHead('MUSIC PLAYER','',UIC.blue);const n=JB.length,rows=Math.ceil(n/2),gap=6,cw=Math.min(180,Math.floor((W-24-gap)/2)),x0=Math.round((W-cw*2-gap)/2),top=40,st=Math.max(18,Math.min(26,Math.floor((H-top-34)/rows))),bh=st-3;
+    const cur=JB.find(s=>s[0]===JBNOW);
+    // now playing strip with a little level meter
+    rr(x0,25,cw*2+gap,12,3,'rgba(16,18,26,.75)');
+    if(cur&&Music.name===JBNOW){for(let b=0;b<5;b++){const h=2+Math.round(7*Math.abs(Math.sin(sceneT*(5+b*1.7)+b*1.3)));ctx.fillStyle=UIC.green;ctx.fillRect(x0+5+b*3,34-h,2,h)}txt('NOW PLAYING  '+cur[1].toUpperCase(),x0+24,27,{color:'#ffffff',ol:null})}
+    else txt(Music.on===false?'MUSIC IS OFF  -  PICK A SONG TO TURN IT ON':'PICK A SONG',x0+6,27,{color:'#c8d0dc',ol:null});
+    JB.forEach((s,i)=>{const col=i<rows?0:1,r=i%rows,x=x0+col*(cw+gap),y=top+r*st,on=i===SEL.jb,pl=s[0]===JBNOW,dx=on?3:0;
+      hov(x,y,cw,bh,()=>{SEL.jb=i;jbPlay(i)},()=>SEL.jb=i);card(x+dx,y,cw,bh,{sel:on,r:4});
+      txt((i+1<10?'0':'')+(i+1),x+6+dx,y+Math.floor((bh-8)/2),{color:'#8a94a4',ol:null});txt(s[1],x+22+dx,y+Math.floor((bh-8)/2),{color:pl?UIC.green:UIC.ink,ol:null});
+      if(bh>=20)txt(s[2],x+cw-txtW(s[2])-8+dx,y+Math.floor((bh-8)/2),{color:'#8a94a4',ol:null})});
+    uiFoot([['ok','Play'],['item','Stop'],['back','Back']])}};
 
 /* ============ MAIN LOOP ============ */
 let last=performance.now();
@@ -2486,11 +2517,11 @@ function lanApply(S){const ph=['intro','count','race','done'][S.R[0]]||'race',p0
   // sounds for this player's kart and the start
   if(ph==='intro'&&!RACE.jin){RACE.jin=1;SFX.intro()}
   if(ph==='count'){const b=Math.floor(RACE.ct);if(b!==LANC.beep&&b<3){LANC.beep=b;SFX.beep()}}
-  if(ph==='race'&&p0!=='race'&&p0!=='done'){SFX.go();Engine.start();Music.play(TRACK.th.song)}
+  if(ph==='race'&&p0!=='race'&&p0!=='done'){SFX.go();Engine.start();Music.play(raceSong())}
   if(pv&&me){if(me.roulT>0&&Math.floor(me.roulT*14)!==Math.floor(pv.roulT*14))SFX.tick();if(me.item&&!pv.item)SFX.got();if(me.boostT>pv.boostT+.3)SFX.boost();if((me.spinT>pv.spinT+.3)||(me.tumbleT>pv.tumbleT+.3)){SFX.hit();SHAKE=.3}
     if(me.lap>pv.lap&&!me.finished){if(me.lap===RACE.laps){SFX.final();Music.rate=1.1}else SFX.lap()}if(me.finished&&!pv.finished){SFX.finish();Engine.stop();Music.play('results')}if(me.hornetWarn>0&&!(pv.hornetWarn>0))SFX.warn();if(me.fallT>0&&!(pv.fallT>0))SFX.fall()}
   if(me)LANC.prev={roulT:me.roulT,item:me.item,boostT:me.boostT,spinT:me.spinT,tumbleT:me.tumbleT,lap:me.lap,finished:me.finished,hornetWarn:me.hornetWarn,fallT:me.fallT};
-  if(ph==='race'&&RACE.mode!=='demo'&&me&&!me.finished)Music.play(me.starT>0?'star':TRACK.th.song)}
+  if(ph==='race'&&RACE.mode!=='demo'&&me&&!me.finished)Music.play(me.starT>0?'star':raceSong())}
 function netTick(){if(NET.role==='host'&&!NET.inRace&&scene!=='lanlobby'&&scene!=='chars'&&scene!=='veh'&&scene!=='loading'&&scene!=='race'){}}
 
 /* ============ ONLINE: who is playing right now ============
@@ -2828,7 +2859,7 @@ const SPECH={livePause:true,pauseOpts:['Continue','Leave Room'],
   pauseDo(i){if(i===0)RACE.paused=false;else onlLeave()},
   // you came in partway through: the race runs ahead while the loading screen is up, a slice each frame
   prep(){if(RACE.ffN==null){RACE.phase='race';RACE.time=0;RACE.goT=0;RACE.ffN=Math.floor((40+R()*70)*60)}for(let i=0;i<60&&RACE.ffN>0;i++,RACE.ffN--)raceStep(STEP,null)},
-  start(){this.prep();while(RACE.ffN>0){raceStep(STEP,null);RACE.ffN--}Music.play(TRACK.th.song);ONL.specT=0;ONL.autoT=8;specWatch()},
+  start(){this.prep();while(RACE.ffN>0){raceStep(STEP,null);RACE.ffN--}Music.play(raceSong());ONL.specT=0;ONL.autoT=8;specWatch()},
   update(dt){if(RACE.results){ONL.autoT-=dt;if(ONL.autoT<=0){specDone();return true}return false}
     ONL.specT+=dt;if(ONL.specT>8||PLAYER.finished&&ONL.specT>2.5){ONL.specT=0;specWatch()}
     if(RACE.phase==='race'&&racers.some(k=>k.finished)){RACE.phase='done';RACE.doneT=0;Music.play('results')}return false},
