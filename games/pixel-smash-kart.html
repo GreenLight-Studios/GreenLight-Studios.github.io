@@ -70,7 +70,7 @@ const ADS=(()=>{
    can't go online until it is updated. If the site can't be reached, the game goes online anyway: a site that is
    down shouldn't stop anyone playing. CUR and SITE are set by set_version.py. Portal builds skip the check. */
 const VER=(()=>{
-  const CUR='1.2',SITE='https://greenlight-studios.github.io';
+  const CUR='1.41',SITE='https://greenlight-studios.github.io';
   let el=null,busy=false,cache=null,cacheT=0,padRaf=0;
   // a copy served from the site itself reads the file next to it; other copies (download, app) ask SITE
   const onSite=()=>/^https?:$/.test(location.protocol)&&/\/games\/[^/]*$/.test(location.pathname);
@@ -150,11 +150,15 @@ function shuffle(a,r=R){for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+
 const TXT=new Map(),FONT={s:'Silkscreen',p:'Pixelify Sans',b:'Pixelify Sans'};
 const fontOf=(f,size)=>(f==='p'?'500 ':f==='b'?'700 ':'')+size+'px "'+FONT[f]+'",monospace';
 // f: s = Silkscreen, p = Pixelify, b = bold Pixelify. it: slant rows (italic). grad: [top,bottom] colour ramp. ol2: second outline ring
+// one shared measuring context: making a canvas per measurement showed up in profiles
+let MC=null;const measCtx=()=>MC||(MC=mkCanvas(8,8).getContext('2d'));
 function makeText(s,size,color,f,ol,it,grad,ol2){
   const fs=fontOf(f,size);
-  const m=mkCanvas(2,2).getContext('2d');m.font=fs;
+  const m=measCtx();m.font=fs;
   const tw=Math.ceil(m.measureText(s).width)+6,h=Math.ceil(size*1.45)+6,sk=it?Math.ceil(h/3.2):0,w=tw+sk+(ol2?2:0);
-  const c=mkCanvas(w,h),g=c.getContext('2d');g.font=fs;g.textBaseline='top';g.fillStyle='#fff';g.fillText(s,3+sk,3);
+  // willReadFrequently: the mask below reads this canvas back. On a GPU-backed canvas that read is a
+  // pipeline flush (measured 1.5 ms vs 0.07 ms); the HUD re-bakes its clock text while you drive.
+  const c=mkCanvas(w,h),g=c.getContext('2d',{willReadFrequently:true});g.font=fs;g.textBaseline='top';g.fillStyle='#fff';g.fillText(s,3+sk,3);
   const id=g.getImageData(0,0,w,h),d=id.data,mask=new Uint8Array(w*h);
   const th=f!=='s'?(size<20?190:size<30?160:128):128;for(let i=0;i<w*h;i++)mask[i]=d[i*4+3]>th?1:0;
   if(it){for(let y=0;y<h;y++){const sh=Math.floor((y-3)/3.2);if(sh<=0)continue;const r=y*w;for(let x=0;x<w;x++)mask[r+x]=x+sh<w?mask[r+x+sh]:0}}
@@ -174,7 +178,7 @@ function txt(s,x,y,o){o=o||{};const c=txtC(s,o);
   const w=c.width-6-c.sk;let dx=x-3;if(o.align==='center')dx=x-w/2-3-c.sk/2;else if(o.align==='right')dx=x-w-3-c.sk;
   if(o.alpha!=null)ctx.globalAlpha=o.alpha;ctx.drawImage(c,Math.round(dx),Math.round(y-3));ctx.globalAlpha=1;return w}
 const TW=new Map();
-function txtW(s,size,f){f=f||'s';size=size||8;const key=s+'|'+size+f;let v=TW.get(key);if(v!=null)return v;const m=mkCanvas(2,2).getContext('2d');m.font=fontOf(f,size);v=Math.ceil(m.measureText(String(s)).width);if(TW.size>3000)TW.clear();TW.set(key,v);return v}
+function txtW(s,size,f){f=f||'s';size=size||8;const key=s+'|'+size+f;let v=TW.get(key);if(v!=null)return v;const m=measCtx();m.font=fontOf(f,size);v=Math.ceil(m.measureText(String(s)).width);if(TW.size>3000)TW.clear();TW.set(key,v);return v}
 if(document.fonts){Promise.all([document.fonts.load('8px Silkscreen'),document.fonts.load('500 16px "Pixelify Sans"'),document.fonts.load('700 16px "Pixelify Sans"')]).then(()=>{TXT.clear();TW.clear()}).catch(()=>{});document.fonts.ready.then(()=>{TXT.clear();TW.clear()})}
 
 /* ============ INPUT ============ */
@@ -182,7 +186,7 @@ const KEY={};
 const TAP={};
 const typing=e=>{const t=e.target;return t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')};
 let LASTDEV='kb';
-addEventListener('keydown',e=>{if(typing(e))return;if(/^(Arrow|Space|Tab)/.test(e.code))e.preventDefault();if(!e.repeat){KEY[e.code]=true;TAP[e.code]=true;if(e.code==='KeyF')setFS(!isFS())}touchMode=false;LASTDEV='kb';audioInit()});
+addEventListener('keydown',e=>{if(typing(e))return;if(e.code==='F3'){e.preventDefault();SET.perf=!SET.perf;PF.on=SET.perf;saveSet();return}if(/^(Arrow|Space|Tab)/.test(e.code))e.preventDefault();if(!e.repeat){KEY[e.code]=true;TAP[e.code]=true;if(e.code==='KeyF')setFS(!isFS())}touchMode=false;LASTDEV='kb';audioInit()});
 addEventListener('keyup',e=>{KEY[e.code]=false});
 addEventListener('blur',()=>{for(const k in KEY)KEY[k]=false});
 const BIND={acc:['ArrowUp','KeyW'],brk:['ArrowDown','KeyS'],left:['ArrowLeft','KeyA'],right:['ArrowRight','KeyD'],
@@ -1127,7 +1131,8 @@ function buildHeights(T,th,TM,D){const S=TS,N=T.N,cx=T.cx,cy=T.cy,nx=T.nx,ny=T.n
   for(const r of T.rampIdx){const x0=cx[r],y0=cy[r],tx=Math.cos(T.ang[r]),ty=Math.sin(T.ang[r]),h0=hw[r]+.5,xs=[x0,x0+tx*RAMP_L],ys=[y0,y0+ty*RAMP_L];
     const bx0=Math.max(0,Math.floor(Math.min(...xs)-h0-2)),bx1=Math.min(S-1,Math.ceil(Math.max(...xs)+h0+2)),by0=Math.max(0,Math.floor(Math.min(...ys)-h0-2)),by1=Math.min(S-1,Math.ceil(Math.max(...ys)+h0+2));
     for(let y=by0;y<=by1;y++)for(let x=bx0;x<=bx1;x++){const dx=x+.5-x0,dy=y+.5-y0,s=dx*tx+dy*ty,l=-dx*ty+dy*tx;if(s>=0&&s<=RAMP_L&&Math.abs(l)<=h0)HM[y*S+x]+=RAMP_H*(s/RAMP_L)}}
-  T.HM=HM;T.drop=Math.max(1,avg-voidH);T.outH=T.outside===VOID?voidH:avg+wallH;T.see=null}
+  T.HM=HM;{let hm=0;for(let i=0;i<HM.length;i++){const v=HM[i];if(v>hm)hm=v}T.hMax=hm}
+  T.drop=Math.max(1,avg-voidH);T.outH=T.outside===VOID?voidH:avg+wallH;T.see=null}
 function pkLerp(a,b,f){const g=1-f;return pk((a&255)*g+(b&255)*f,((a>>8)&255)*g+((b>>8)&255)*f,((a>>16)&255)*g+((b>>16)&255)*f)}
 function hAt(x,y){const T=TRACK;if(!T||!T.HM)return 0;const S=TS;if(x<0||y<0||x>=S-1||y>=S-1)return T.outH;const ix=x|0,iy=y|0,fx=x-ix,fy=y-iy,o=iy*S+ix,H=T.HM;
   return(H[o]*(1-fx)+H[o+1]*fx)*(1-fy)+(H[o+S]*(1-fx)+H[o+S+1]*fx)*fy}
@@ -1297,7 +1302,9 @@ function updKart(k,c,dt){
   // drift / hop
   const s=ctrl?c.steer:0,dp=c.drift&&!k.prevDrift;k.prevDrift=c.drift;if(!c.drift)k.hopLatch=false;
   k.steerVis+=(s-k.steerVis)*Math.min(1,dt*10);
-  if(ctrl&&k.rampT>0&&dp&&!ground){k.trick=true;k.rampT=0;k.trickT=.001;k.trickK=Math.floor(R()*3);k.trickD=s<-.2?-1:s>.2?1:(R()<.5?-1:1);if(k.isP)SFX.trick();else if(near(k,90))SFX.trick(.4);burst(k.x,k.y,k.z+4,10,['#ffffff','#ffe066','#9ff5e6'],34)}
+  // a trick fires on a drift PRESS or while drift is simply held: you are usually already holding it
+  // through the corner that leads into the ramp
+  if(ctrl&&k.rampT>0&&c.drift&&!ground){k.trick=true;k.rampT=0;k.trickT=.001;k.trickK=Math.floor(R()*3);k.trickD=s<-.2?-1:s>.2?1:(R()<.5?-1:1);if(k.isP)SFX.trick();else if(near(k,90))SFX.trick(.4);burst(k.x,k.y,k.z+4,10,['#ffffff','#ffe066','#9ff5e6'],34)}
   else if(ctrl&&dp&&ground&&k.spd>12&&!k.drift){k.vz+=22;k.air=true;k.hopLatch=true;if(k.isP)SFX.hop()}
   if(ctrl&&!k.drift&&c.drift&&k.hopLatch&&Math.abs(s)>.3&&k.spd>30){k.drift=Math.sign(s);k.dCharge=0;k.dTier=0;k.dAge=0}
   const airK=ground?1:.55;
@@ -1316,7 +1323,9 @@ function updKart(k,c,dt){
   // vertical
   if(k.rampT>0)k.rampT-=dt;
   if(ground){
-    if(ty===RAMP&&k.spd>25){k.vz=Math.max(0,k.vz)*.4+42+k.spd*.05;k.air=true;k.rampT=.55}
+    // every ramp is a launch ramp and a boost panel at once: it throws you off and lights a boost
+    if(ty===RAMP&&k.spd>25){k.vz=Math.max(0,k.vz)*.4+42+k.spd*.05;k.air=true;k.rampT=.55;
+      k.boostT=Math.max(k.boostT,1.1);if(k.isP)SFX.boost()}
     if(ty===BOOST){if(!k.onPad){k.onPad=true;if(k.isP)SFX.boost()}k.boostT=Math.max(k.boostT,1.1)}else k.onPad=false;
     if(ty===VOID){fallStart(k);return}}
   // move + walls
@@ -1429,7 +1438,10 @@ function aiCtrl(k,dt){const A=k.ai,T=TRACK,P=k.P,N=T.N;const c={steer:0,acc:true
   aiItems(k,c,dt,curv);return c}
 function rank(){const arr=racers.slice().sort((a,b)=>{if(a.finished&&b.finished)return a.finishT-b.finishT;if(a.finished)return-1;if(b.finished)return 1;return b.dist-a.dist});arr.forEach((k,i)=>k.pos=i+1)}
 function rocketStarts(){for(const k of racers){if(k.hum){const t=k.accT;if(t==null)continue;
-    if(t>=1.1&&t<=1.75){k.boostT=1.3;if(k.isP)SFX.boost();say(k,'ROCKET START!',1.2)}else if(t>1.75&&t<=2.5){k.boostT=.55;if(k.isP)SFX.boost()}else if(t<.85){k.spinT=1;say(k,'BURNOUT',1);burst(k.x,k.y,1,14,['#c8c8c8','#888888'],25,2)}}
+    if(t>=1.1&&t<=1.75){k.boostT=1.3;if(k.isP)SFX.boost();say(k,'ROCKET START!',1.2)}else if(t>1.75&&t<=2.5){k.boostT=.55;if(k.isP)SFX.boost()}
+    // a drift press that comes too early only costs the boost on the touch controls, where the player
+    // is also using that button to line up the first corner
+    else if(t<.85&&!startByDrift()){k.spinT=1;say(k,'BURNOUT',1);burst(k.x,k.y,1,14,['#c8c8c8','#888888'],25,2)}}
   else{const S=k.ai.st;if(S&&S.afk)continue;if(S&&S.burn&&R()<S.burn){k.spinT=1;continue}if(R()<k.ai.skill*.7*(S&&S.start!=null?S.start:1))k.boostT=R()<.5?1.2:.5}}}
 function finalizeResults(){const T=TRACK;for(const k of racers)if(!k.finished){k.finishT=RACE.time+Math.max(0,RACE.laps*T.N-k.dist)*T.SP/(k.P.vmax*.85);k.est=true}
   const res=racers.slice().sort((a,b)=>a.finishT-b.finishT);RACE.results=res;res.forEach((k,i)=>k.place=i+1);
@@ -1456,13 +1468,17 @@ function camFollow(k,CAM,dt){let dist=46,hgt=21;const B=camBase(CAM);
     const fs=CAM.f/200,tz=clamp(B.hz+sl*CAM.f*.5-(CAM.z-CAM.kz-CAM.h)*1.2*fs,B.hz-30*B.s,B.hz+36*B.s);CAM.hz+=(tz-CAM.hz)*Math.min(1,dt*3.2)}
   if(SHAKE>0){CAM.x+=(R()-.5)*SHAKE*7;CAM.y+=(R()-.5)*SHAKE*7}}
 // pc: null (all CPU), a control object for PLAYER, or a function k=>control (null = CPU drives)
+// On the on-screen controls there is no accelerator button - the game holds it for you - so DRIFT is the
+// button that starts the rocket boost: hold it just after "2" and the launch is boosted.
+const startByDrift=()=>touchMode&&SET.ovl!==false;
 function raceStep(dt,pc){const T=TRACK;RACE.t+=dt;
   const ctrlOf=k=>!k.hum||k.finished||!pc?null:typeof pc==='function'?pc(k):k===PLAYER?pc:null;
   // wait: online, everyone sits on the grid until all players have loaded in
   if(RACE.phase==='wait'){RACE.waitT-=dt;if(RACE.goNow||RACE.waitT<=0&&!RACE.holdGo){RACE.phase='intro';RACE.t=0;RACE.goNow=false}}
   else if(RACE.phase==='intro'){if(!RACE.jin&&RACE.mode!=='demo'){RACE.jin=1;SFX.intro()}if(RACE.t>INTRO_T){RACE.phase='count';RACE.ct=0;RACE.beep=-1}}
   else if(RACE.phase==='count'){RACE.ct+=dt;const b=Math.floor(RACE.ct);if(b!==RACE.beep&&b<3){RACE.beep=b;SFX.beep()}
-    for(const k of racers)if(k.hum){const c=ctrlOf(k);if(c&&c.acc){if(k.accT==null)k.accT=RACE.ct}else k.accT=null}
+    const byDrift=startByDrift();
+    for(const k of racers)if(k.hum){const c=ctrlOf(k);const on=c&&(byDrift?c.drift:c.acc);if(on){if(k.accT==null)k.accT=RACE.ct}else k.accT=null}
     if(RACE.ct>=3){RACE.phase='race';RACE.time=0;RACE.goT=1;SFX.go();Engine.start();Music.play(raceSong());rocketStarts()}}
   else RACE.time+=dt;
   if(RACE.goT>0)RACE.goT-=dt;
@@ -1484,45 +1500,106 @@ function raceStep(dt,pc){const T=TRACK;RACE.t+=dt;
 /* ============ RENDER ============ */
 /* heightmap terrain: per-column front-to-back ray march (voxel-space style) with a y-buffer.
    YB keeps the y-buffer after each depth step so sprites can be clipped behind hills and cliffs. */
-const ZS=(()=>{const a=[];let z=2.5;while(z<1300){a.push(z);z+=Math.max(.45,z*.0125)}return new Float32Array(a)})(),NZ=ZS.length,FK=new Float32Array(NZ);
+// Depth slices, rebuilt every frame. The ground marches a ray per screen column, and the rows on screen
+// are uniform in 1/z, so the slice table is uniform in 1/z too: one slice per screen row of ground from
+// the bottom of the view out to the fog end. The old fixed geometric table used ~340 slices for ~170
+// rows, spent ~75 of them on rows below the screen that can never show, and sampled the rest up to 3x
+// too finely - two thirds of every frame's samples were dropped.
+const NZ=384,ZSF=new Float32Array(NZ),FKF=new Float32Array(NZ);let NZF=0;
+const ZS=null;
+function mkZS(f,hz,cz,gH,fE,fS){const k=Math.max(1,(cz-gH)*f),rowsB=H+1,top=Math.min(rowsB-1,hz+k/Math.max(1,fE));
+  let n=Math.round(rowsB-top);if(n<16)n=16;if(n>NZ)n=NZ;
+  NZF=n;const span=rowsB-top,m=n>1?n-1:1;
+  for(let j=0;j<n;j++){const r=rowsB-span*j/m,z=k/Math.max(.0001,r-hz);ZSF[j]=z;
+    let q=(z-fS)/(fE-fS);q=q<0?0:q>1?1:q;FKF[j]=q*q*(3-2*q)}}
 // one frame buffer + y-buffer per view size (full screen, half, quarter)
-const VB=new Map();let IMG,BUF,GCV,GCX,YB;
-function useVB(w,h){const key=w+'x'+h;let v=VB.get(key);if(!v){if(VB.size>8)VB.clear();const c=mkCanvas(w,h),g=c.getContext('2d'),img=g.createImageData(w,h);v={IMG:img,BUF:new Uint32Array(img.data.buffer),GCV:c,GCX:g,YB:new Int16Array(NZ*w)};VB.set(key,v)}
-  IMG=v.IMG;BUF=v.BUF;GCV=v.GCV;GCX=v.GCX;YB=v.YB}
+const VB=new Map();let IMG,BUF,GCV,GCX,YB,VBYBC,YBW=0,YBS=1;
+function useVB(w,h){const key=w+'x'+h;let v=VB.get(key);if(!v){if(VB.size>8)VB.clear();const c=mkCanvas(w,h),g=c.getContext('2d'),img=g.createImageData(w,h);v={IMG:img,BUF:new Uint32Array(img.data.buffer),GCV:c,GCX:g,YB:new Int16Array(NZ*w),YBC:new Int16Array(w)};VB.set(key,v)}
+  IMG=v.IMG;BUF=v.BUF;GCV=v.GCV;GCX=v.GCX;YB=v.YB;VBYBC=v.YBC;YBW=w;YBS=1}
 useVB(W,H);
+/* Ground resolution scale. The raycast below costs one pass per screen pixel, so its cost is the canvas
+   area. Full resolution is the default - the picture is meant to be pixel perfect, and 30 fps on a slow
+   handheld is the accepted trade. Lowering it (Settings -> Ground detail) renders the 3D scene into a
+   smaller bitmap and stretches it up, leaving the HUD, karts and text at full resolution, for anyone who
+   would rather have the frame rate. AUTO drops a step while the pass is over budget. */
+const GQS=[1,.82,.68,.56,.47];let GQI=0,GQ=1,GAUTO=false,GEMA=0,GAT=0,GNDF=0;
+function gqSet(i){GQI=clamp(i,0,GQS.length-1);GQ=GQS[GQI];GEMA=0;GAT=0}
+function gqTick(){if(!GAUTO)return;const ms=GNDF;if(!ms)return;GEMA=GEMA?GEMA+(ms-GEMA)*.07:ms;
+  if(++GAT<45)return;GAT=0;
+  if(GEMA>9.5&&GQI<GQS.length-1)gqSet(GQI+1);else if(GEMA<4.5&&GQI>0)gqSet(GQI-1)}
+/* The ground raycast below is the hottest code in the game (measured: ~85% of draw time). These tables
+   hold, for one frame, everything in its inner loop that only depends on the depth slice: the projection
+   constants, the mip level's size and its two texel arrays. Rebuilding them costs a couple of hundred
+   operations; it saves a divide, three compares and an array-object lookup per slice per pixel column. */
+const RGT={zr:new Float32Array(NZ),zi:new Float32Array(NZ),cix:new Float32Array(NZ),ciy:new Float32Array(NZ),sz:new Int32Array(NZ),z:new Float32Array(NZ),hm:new Array(NZ),dd:new Array(NZ)};
+function rgTables(jE,f,M,HMm,cam){const R=RGT;
+  for(let j=0;j<jE;j++){const z=ZSF[j],st=z/f,m=st<1.4?0:st<2.8?1:st<5.6?2:3,mp=M[m],inv=m===0?1:1/(1<<m);
+    R.zr[j]=f/z;R.zi[j]=z*inv;R.cix[j]=cam.x*inv;R.ciy[j]=cam.y*inv;R.sz[j]=mp.s;R.z[j]=z;R.hm[j]=HMm[m];R.dd[j]=mp.d}}
 function renderGround(T){
-  const cam=CAM,ca=Math.cos(cam.a),sa=Math.sin(cam.a),th=T.th,fogC=pkh(th.fog),fr=fogC&255,fg=(fogC>>8)&255,fb=(fogC>>16)&255,out=T.outC,outH=T.outH,fS=th.fogS,fE=th.fogE,f=cam.f,hz=cam.hz,cz=cam.z;
-  useVB(W,H);const ps=f/200,ph=Math.max(1,Math.round(HZ*ps)),PW=Math.max(1,Math.round(T.pano.width*ps)),py=Math.round(hz-ph);if(py>0){ctx.fillStyle=T.panoTop;ctx.fillRect(0,0,W,py)}
-  let off=((cam.a/TAU)*PW)%PW;if(off<0)off+=PW;off=Math.round(off);for(let x=-off;x<W;x+=PW)ctx.drawImage(T.pano,x,py,PW,ph);
-  let jE=0;while(jE<NZ&&ZS[jE]<fE)jE++;
-  for(let j=0;j<jE;j++){let k=(ZS[j]-fS)/(fE-fS);k=k<0?0:k>1?1:k;FK[j]=k*k*(3-2*k)}
+  const __g=performance.now();
+  const FW=W,FH=H,q=GQ,scaled=q<.999;
+  const cam=CAM,ca=Math.cos(cam.a),sa=Math.sin(cam.a),th=T.th,fogC=pkh(th.fog),fr=fogC&255,fg=(fogC>>8)&255,fb=(fogC>>16)&255,out=T.outC,outH=T.outH,fS=th.fogS,fE=th.fogE,cz=cam.z;
+  let f=cam.f,hz=cam.hz;
+  {const ps=f/200,ph=Math.max(1,Math.round(HZ*ps)),PW=Math.max(1,Math.round(T.pano.width*ps)),py=Math.round(hz-ph);if(py>0){ctx.fillStyle=T.panoTop;ctx.fillRect(0,0,FW,py)}
+    let off=((cam.a/TAU)*PW)%PW;if(off<0)off+=PW;off=Math.round(off);for(let x=-off;x<FW;x+=PW)ctx.drawImage(T.pano,x,py,PW,ph)}
+  if(scaled){W=Math.max(72,Math.round(FW*q));H=Math.max(54,Math.round(FH*q));f=cam.f*q;hz=cam.hz*q}
+  useVB(W,H);
+  mkZS(f,hz,cz,hAt(cam.x,cam.y),fE,fS);const jE=NZF;
   BUF.fill(0);const M=T.mips,hzI=Math.max(0,Math.ceil(hz)),slab=!!T.rmips,HMm=slab?T.rmips:T.hmips;
   if(slab){// floor layer: the void (sky / lava / water) as a flat plane at voidH
     const fh=cz-T.outH;for(let y=hzI;y<H;y++){const z=fh*f/(y-hz+.5);if(z<=0)continue;let fk=(z-fS)/(fE-fS);fk=fk<0?0:fk>1?1:fk;fk=fk*fk*(3-2*fk);let o=y*W;
       if(fk>.995){BUF.fill(fogC,o,o+W);continue}const st=z/f,m=st<1.4?0:st<2.8?1:st<5.6?2:3,mp=M[m],sz=mp.s,D=mp.d,inv=1/(1<<m),rx=-sa*st*inv,ry=ca*st*inv;
       let wx=(cam.x+ca*z)*inv-rx*W/2,wy=(cam.y+sa*z)*inv-ry*W/2;const k1=1-fk;
       for(let x=0;x<W;x++){const tx=wx|0,ty=wy|0;let c=(wx>=0&&wy>=0&&tx<sz&&ty<sz)?D[ty*sz+tx]:out;if(fk>.003)c=(0xff000000|((((c>>16)&255)*k1+fb*fk)<<16)|((((c>>8)&255)*k1+fg*fk)<<8)|(((c&255)*k1+fr*fk)|0))>>>0;BUF[o++]=c;wx+=rx;wy+=ry}}}
-  const fC=T.faceC||0,thick=T.thick||0;
-  for(let x=0;x<W;x++){const rx=(x-W/2+.5)/f,dx=ca-sa*rx,dy=sa+ca*rx;let yb=H,j=0;
-    for(;j<jE;j++){const z=ZS[j],st=z/f,m=st<1.4?0:st<2.8?1:st<5.6?2:3,mp=M[m],sz=mp.s,inv=m===0?1:1/(1<<m),wx=(cam.x+dx*z)*inv,wy=(cam.y+dy*z)*inv;let h,c;
-      if(wx>=0&&wy>=0&&wx<sz&&wy<sz){const o=(wy|0)*sz+(wx|0);h=HMm[m][o];c=mp.d[o]}else{h=slab?NaN:outH;c=out}
+  const fC=T.faceC||0,thick=T.thick||0;rgTables(jE,f,M,HMm,cam);const R=RGT,YBC=VBYBC;
+  // Scan slice-by-slice instead of column-by-column: for one depth slice every column reads a run of
+  // neighbouring texels, so the two big texture arrays stay in cache (the old order walked all 300+ mip
+  // slices for one column before moving on, which missed on nearly every read). yb is the per-column
+  // "already painted down to here" row, exactly as before.
+  for(let x=0;x<W;x++)YBC[x]=H;
+  // With the camera above every bit of terrain, a pixel column that is already painted down to the
+  // horizon can never be painted again: every further depth slice projects at or above it. That kills
+  // most of the far slices (the majority of them) and is exactly the same picture.
+  const aboveH=cz>T.hMax+2,hzB=hzI;
+  const r0=(0-W/2+.5)/f,dx0=ca-sa*r0,dy0=sa+ca*r0;
+  for(let j=0;j<jE;j++){
+    const zi=R.zi[j],zr=R.zr[j],sz=R.sz[j],hmj=R.hm[j],ddj=R.dd[j],fk=FKF[j],zrp=j?R.zr[j-1]:0;
+    const sx=-sa/f*zi,sy2=ca/f*zi,k1=fk>.003?1-fk:0,fog=fk>.995;
+    let wx=R.cix[j]+dx0*zi,wy=R.ciy[j]+dy0*zi;
+    for(let x=0;x<W;x++,wx+=sx,wy+=sy2){
+      const yb=YBC[x];if(yb<=0){YB[j*W+x]=0;continue}
+      if(aboveH&&yb<=hzB){YB[j*W+x]=yb;continue}
+      let h,c;
+      if(wx>=0&&wy>=0&&wx<sz&&wy<sz){const o=(wy|0)*sz+(wx|0);h=hmj[o];c=ddj[o]}else{h=slab?NaN:outH;c=out}
       if(h!==h){YB[j*W+x]=yb;continue}
-      let sy=hz+(cz-h)*f/z;sy=sy<0?0:sy|0;
-      if(sy<yb){const fk=FK[j],mixF=(c)=>fk>.995?fogC:fk>.003?(0xff000000|((((c>>16)&255)*(1-fk)+fb*fk)<<16)|((((c>>8)&255)*(1-fk)+fg*fk)<<8)|(((c&255)*(1-fk)+fr*fk)|0))>>>0:c;c=mixF(c);
+      let sy=hz+(cz-h)*zr;sy=sy<0?0:sy|0;
+      if(sy<yb){
+        if(fog)c=fogC;else if(k1)c=(0xff000000|((((c>>16)&255)*k1+fb*fk)<<16)|((((c>>8)&255)*k1+fg*fk)<<8)|(((c&255)*k1+fr*fk)|0))>>>0;
         if(slab){// top surface rows, then a side face of limited thickness that fades into what is behind
-          const sp=j?hz+(cz-h)*f/ZS[j-1]:H,te=Math.min(yb,Math.max(sy+1,Math.ceil(sp)+1));let o=sy*W+x;for(let y=sy;y<te;y++,o+=W)BUF[o]=c;
-          const fr2=thick*f/z,fe=Math.min(yb,te+Math.ceil(fr2)),fc=mixF(fC);
-          for(let y=te;y<fe;y++,o+=W){const t=(y-te)/fr2,u=t*t,b=BUF[o];if(!(b>>>24)){BUF[o]=fc;continue}const g=1-u;BUF[o]=(0xff000000|((((fc>>16)&255)*g+((b>>16)&255)*u)<<16)|((((fc>>8)&255)*g+((b>>8)&255)*u)<<8)|(((fc&255)*g+(b&255)*u)|0))>>>0}}
-        else for(let y=sy,o=sy*W+x;y<yb;y++,o+=W)BUF[o]=c;
-        yb=sy}
-      YB[j*W+x]=yb;if(yb<=0){j++;break}}
-    for(;j<NZ;j++)YB[j*W+x]=yb;
+          const fc=fog?fogC:k1?(0xff000000|((((fC>>16)&255)*k1+fb*fk)<<16)|((((fC>>8)&255)*k1+fg*fk)<<8)|(((fC&255)*k1+fr*fk)|0))>>>0:fC;
+          const sp=j?hz+(cz-h)*zrp:H,te=Math.min(yb,Math.max(sy+1,Math.ceil(sp)+1));let o=sy*W+x;for(let y=sy;y<te;y++,o+=W)BUF[o]=c;
+          const fr2=(thick*f)/R.z[j],fe=Math.min(yb,te+Math.ceil(fr2));
+          for(let y=te;y<fe;y++,o+=W){const t=(y-te)/fr2,u=t*t,b=BUF[o];if(!(b>>>24)){BUF[o]=fc;continue}const g=1-u;BUF[o]=(0xff000000|((((fc>>16)&255)*g+((b>>16)&255)*u)<<16)|((((fc>>8)&255)*g+((b>>8)&255)*u)<<8)|(((fc&255)*g+(b&255)*u)|0))>>>0}
+          YBC[x]=sy;
+        }
+        else{for(let y=sy,o=sy*W+x;y<yb;y++,o+=W)BUF[o]=c;YBC[x]=sy}
+      }
+      YB[j*W+x]=YBC[x]}
+  }
+  for(let x=0;x<W;x++){const yb=YBC[x];
+    for(let j=jE;j<NZF;j++)YB[j*W+x]=yb;
     if(!slab)for(let y=hzI,o=hzI*W+x;y<yb;y++,o+=W)BUF[o]=fogC}
-  GCX.putImageData(IMG,0,0);ctx.drawImage(GCV,0,0)}
+  GCX.putImageData(IMG,0,0);
+  if(scaled){YBS=H/FH;YBW=W;ctx.imageSmoothingEnabled=false;ctx.drawImage(GCV,0,0,W,H,0,0,FW,FH);W=FW;H=FH}
+  else ctx.drawImage(GCV,0,0);
+  GNDF=performance.now()-__g;if(PF.on)PF.gndSum+=GNDF}
 function P3(x,y,z){const dx=x-CAM.x,dy=y-CAM.y,ca=Math.cos(CAM.a),sa=Math.sin(CAM.a),d=dx*ca+dy*sa;if(d<5)return null;const xr=-dx*sa+dy*ca,sc=CAM.f/d;return{sx:W/2+xr*sc,sy:CAM.hz+(CAM.z-z)*sc,sc,d}}
 function P3g(x,y,z){return P3(x,y,z+hAt(x,y))}
 // screen row above which terrain nearer than depth d does not cover column sx
-function occY(sx,d){const dd=d-Math.max(3,d*.035);if(dd<=ZS[0])return H;let lo=0,hi=NZ-1;while(lo<hi){const m=(lo+hi+1)>>1;if(ZS[m]<dd)lo=m;else hi=m-1}return YB[lo*W+(sx<0?0:sx>=W?W-1:sx|0)]}
+function occY(sx,d){const dd=d-Math.max(3,d*.035);if(dd<=ZSF[0])return H;let lo=0,hi=Math.max(0,NZF-1);while(lo<hi){const m=(lo+hi+1)>>1;if(ZSF[m]<dd)lo=m;else hi=m-1}
+  // the y-buffer follows the ground buffer, which may be smaller than the view
+  const x=sx<0?0:sx>=W?W-1:sx|0,bx=YBW===W?x:(x*YBW/W)|0;
+  return YB[lo*YBW+(bx>=YBW?YBW-1:bx)]/YBS}
 function fogA(T,d){const th=T.th;let f=(d-th.fogS*.9)/(th.fogE-th.fogS*.9);f=clamp(f,0,1);return 1-f*f}
 const TMP=mkCanvas(256,256),TG=TMP.getContext('2d');
 function tinted(img,dx,dy,dw,dh,col,a){TG.clearRect(0,0,img.width,img.height);TG.globalCompositeOperation='source-over';TG.drawImage(img,0,0);TG.globalCompositeOperation='source-atop';TG.fillStyle=col;TG.fillRect(0,0,img.width,img.height);TG.globalCompositeOperation='source-over';ctx.globalAlpha=a;ctx.drawImage(TMP,0,0,img.width,img.height,dx,dy,dw,dh);ctx.globalAlpha=1}
@@ -1618,7 +1695,7 @@ function drawHUD(t){const k=PLAYER,T=TRACK;if(!k)return;const sm=W<300||H<150,tt
   const cx=W/2,cy=H/2,F=sm?.62:1;
   if(RACE.phase==='count'){const n=3-Math.floor(RACE.ct),f=RACE.ct%1,sz=Math.round(lerp(78,52,Math.min(1,f*4))*F);
     hudNum(n,cx,cy-sz*.75,sz,[['#ffffff','#ff4a3a'],['#ffffff','#ffb000'],['#ffffff','#58c040']][3-n]||['#fff','#ccc'],'center');
-    if(!sm){if(touchMode)txt('hold BRAKE to back throw',cx,H-34,{align:'center',color:'#e9efd8'});else txt('Tip: hold accelerate right after "2" for a rocket start',cx,H-34,{align:'center',color:'#e9efd8'})}}
+    if(!sm){fitTxt(touchMode?'hold DRIFT right after "2" for a rocket start':'hold accelerate right after "2" for a rocket start',cx,H-36,W-140,{align:'center',color:'#e9efd8'})}}
   if(RACE.goT>0){const sz=Math.round((56+(1-RACE.goT)*16)*F);ctx.globalAlpha=clamp(RACE.goT*2,0,1);hudNum('GO!',cx,cy-sz*.8,sz,['#fffbd0','#58d040'],'center');ctx.globalAlpha=1}
   if(k.msg&&k.msgT>0)hudTxt(k.msg,cx,sm?24:44,sm?12:20,k.msg==='FINAL LAP!'?'#ff8a5a':'#ffffff','center');
   if(k.wrongT>.8&&Math.floor(t*3)%2)hudTxt('WRONG WAY',cx,sm?38:66,sm?12:20,'#ff5a4a','center');
@@ -1903,7 +1980,7 @@ function loadGPRace(){const ent=GP.race===0?GP.ent:GP.ent.slice().sort((a,b)=>GP
 let LOADCFG=null;
 const cfgOf=r=>({mode:r.mode,cc:r.cc,track:r.track,entries:r.entries,ch:r.ch,vh:r.vh,aiVeh:r.aiVeh,order:r.order,hook:r.hook,subT:r.subT,sig:r.sig});
 const INTRO_T=3.1;
-const KTIPS=['Hold accelerate just after "2" for a rocket start.','Hold drift longer: blue, then orange, then purple sparks.','Press drift in the air off a ramp to do a trick.','Hold an item behind you to block shells.','Hold back and use an item to throw it behind you.','Hold C to look behind you.','A Storm Bell shrinks everyone but you.','The Sky Hornet hunts whoever is in first place.','Bump light karts with a heavy one to push them off the line.','Zoom Carrots work best on a shortcut.'];
+const KTIPS=['Hold accelerate just after "2" for a rocket start (hold drift for it on touch).','Hold drift longer: blue, then orange, then purple sparks.','Hold drift off a ramp to do a trick and land with a boost.','Every ramp is a boost panel too.','Hold an item behind you to block shells.','Hold back and use an item to throw it behind you.','Hold C to look behind you.','A Storm Bell shrinks everyone but you.','The Sky Hornet hunts whoever is in first place.','Bump light karts with a heavy one to push them off the line.','Zoom Carrots work best on a shortcut.'];
 let LOADDUR=2,LOADTIP='',LOADSET=false;
 function loadRace(cfg){if(ADS.on&&!cfg.hook&&!cfg.adOk){cfg.adOk=1;ADS.brk(()=>loadRace(cfg));return}LOADCFG=cfg;LOADSET=false;LOADDUR=cfg.mode==='tt'?1.5+R()*.8:2.1+R()*1.7;LOADTIP=KTIPS[Math.floor(R()*KTIPS.length)];Music.halt();go('loading')}
 // a loading bar that fills in uneven steps, like a real disc read
@@ -1979,7 +2056,7 @@ SCN.howto={update(dt){stepDemo(dt);if(rep('ml',dt)){SEL.page=(SEL.page+2)%3;SFX.
   draw(){menuBG(.7);uiHead('HOW TO PLAY',(SEL.page+1)+'/3',UIC.blue);const cw=Math.min(W-24,380),x=(W-cw)/2,y=28,chh=H-48;card(x,y,cw,chh);const c=(s,xx,yy,col)=>txt(s,x+xx,y+yy,{color:col||UIC.ink,ol:null});
     if(SEL.page===0){const L=[['Accelerate','W / Up','A'],['Brake / reverse','S / Down','B'],['Steer','A D / Left Right','Stick'],['Hop + drift','Space / Shift','R'],['Use item','E / Q','L'],['Throw backward','hold S + item',''],['Pause','Esc / P','+'],['Fullscreen','F','']];
       c('ACTION',8,6,UIC.mute);c('KEYBOARD',130,6,UIC.mute);c('PAD',cw-50,6,UIC.mute);L.forEach((r,i)=>{c(r[0],8,18+i*11);c(r[1],130,18+i*11,UIC.blue);c(r[2],cw-50,18+i*11)});
-      ['Hold drift while steering into a turn. Sparks build up:','blue > orange > purple. Let go for a mini-turbo boost.','Press drift in the air off a ramp to do a trick and boost.','Hold accelerate just after "2" for a rocket start.'].forEach((l,i)=>c(l,8,112+i*11,i===1?'#1a8a7a':UIC.ink))}
+      ['Hold drift while steering into a turn. Sparks build up:','blue > orange > purple. Let go for a mini-turbo boost.','Hold drift off a ramp to trick; every ramp boosts too.','Hold accelerate (drift on touch) just after "2" to rocket start.'].forEach((l,i)=>c(l,8,112+i*11,i===1?'#1a8a7a':UIC.ink))}
     else if(SEL.page===1){const D=[['pebble','Moss Pebble','Rolls straight, bounces off edges.'],['pebble3','Pebble Trio','Three pebbles orbit you.'],['seeker','Ember Seeker','Chases the racer just ahead.'],['seeker3','Seeker Trio','Three seekers orbit you.'],['hornet','Sky Hornet','Flies to the leader and explodes.'],
       ['carrot','Zoom Carrot','A quick burst of speed.'],['gcarrot','Golden Carrot','Unlimited boosts for a few seconds.'],['prism','Prism Shard','Invincible and faster.'],['bell','Storm Bell','Shrinks every rival.'],['boulder','Boulder Rush','Become a boulder that drives itself.']];
       const colW=(cw-16)/2,rh=Math.floor((chh-12)/5);D.forEach((d,i)=>{const xx=8+(i%2)*colW,yy=6+Math.floor(i/2)*rh;ctx.drawImage(ICON[d[0]],Math.round(x+xx),Math.round(y+yy));c(d[1],xx+26,yy+2,UIC.blue);wrap(d[2],colW-30).slice(0,2).forEach((l,k)=>c(l,xx+26,yy+12+k*9))})}
@@ -1989,7 +2066,9 @@ SCN.howto={update(dt){stepDemo(dt);if(rep('ml',dt)){SEL.page=(SEL.page+2)%3;SFX.
     uiFoot([['lr','Page'],['back','Back']])}};
 function setOpts(){return[{n:'Fullscreen',v:isFS()?'ON':'OFF',f:()=>{SET.fs=!isFS();setFS(SET.fs);saveSet()}},{n:'Music',v:Music.on===false?'OFF':'ON',f:()=>{Music.toggle();SET.music=Music.on!==false;saveSet()}},
   {n:'Race music',v:SET.rmus==='shuffle'?'SHUFFLE':'COURSE',f:()=>{SET.rmus=SET.rmus==='shuffle'?'course':'shuffle';saveSet()}},{n:'Music player',v:'',f:()=>go('jbox')},
-  {n:'Touch controls',v:SET.ovl===false?'OFF':'ON',f:()=>{SET.ovl=SET.ovl===false;saveSet()}},{n:'Online name',v:(typeof ONL!=='undefined'&&ONL.name)||'-',f:()=>{if(typeof onlAskName==='function')onlAskName(()=>{})}},{n:'Account',v:'',f:()=>{if(typeof PXA!=='undefined')PXA.openAccount()}},{n:'Save data',v:'',f:()=>{if(typeof saveMenu==='function')saveMenu()}},{n:'Clear records',v:CLRARM>performance.now()?'PRESS AGAIN':'',f:()=>{if(!(CLRARM>performance.now())){CLRARM=performance.now()+2500;SFX.move();return}CLRARM=0;try{for(const T of TRACKS)localStorage.removeItem('psk_tt_'+T.id)}catch(e){}SFX.back()}}]}
+  {n:'Touch controls',v:SET.ovl===false?'OFF':'ON',f:()=>{SET.ovl=SET.ovl===false;saveSet()}},{n:'Ground detail',v:GAUTO?'AUTO':Math.round(GQ*100)+'%',f:()=>{
+    if(GAUTO){GAUTO=false;gqSet(0)}else if(GQI<GQS.length-1)gqSet(GQI+1);else{GAUTO=true;gqSet(0)}
+    SET.gq=GAUTO?-1:GQI;saveSet()}},{n:'Perf stats',v:PF.on?'ON':'OFF',f:()=>{SET.perf=!PF.on;PF.on=SET.perf;saveSet()}},{n:'Online name',v:(typeof ONL!=='undefined'&&ONL.name)||'-',f:()=>{if(typeof onlAskName==='function')onlAskName(()=>{})}},{n:'Account',v:'',f:()=>{if(typeof PXA!=='undefined')PXA.openAccount()}},{n:'Save data',v:'',f:()=>{if(typeof saveMenu==='function')saveMenu()}},{n:'Clear records',v:CLRARM>performance.now()?'PRESS AGAIN':'',f:()=>{if(!(CLRARM>performance.now())){CLRARM=performance.now()+2500;SFX.move();return}CLRARM=0;try{for(const T of TRACKS)localStorage.removeItem('psk_tt_'+T.id)}catch(e){}SFX.back()}}]}
 let CLRARM=0; // v1.1: Clear records asks for a second press within 2.5 s
 SCN.set={update(dt){stepDemo(dt);const n=setOpts().length;if(rep('mu',dt)){SEL.set=(SEL.set+n-1)%n;SFX.move()}if(rep('md',dt)){SEL.set=(SEL.set+1)%n;SFX.move()}if(hit('ok')){SFX.ok();setOpts()[SEL.set].f()}if(hit('back')){SFX.back();go('main')}},
   draw(){menuBG();uiHead('SETTINGS','',UIC.blue);const O=setOpts(),cw=Math.min(260,W-40),x=(W-cw)/2,st=Math.max(17,Math.min(26,Math.floor((H-48)/O.length))),bh=Math.min(20,st-2),ty=Math.floor((bh-8)/2);O.forEach((o,i)=>{const y=28+i*st,on=i===SEL.set;hov(x,y,cw,bh,()=>{SEL.set=i;SFX.ok();o.f()},()=>SEL.set=i);card(x+(on?4:0),y,cw,bh,{sel:on,r:4});
@@ -2021,10 +2100,26 @@ SCN.jbox={enter(){SEL.jb=SEL.jb||0;JBNOW=null},
       if(bh>=20)txt(s[2],x+cw-txtW(s[2])-8+dx,y+Math.floor((bh-8)/2),{color:'#8a94a4',ol:null})});
     uiFoot([['ok','Play'],['item','Stop'],['back','Back']])}};
 
+/* ============ PERF OVERLAY ============ */
+// Settings -> Perf stats (or F3). The game draws at 384x216-ish pixels and the ground raycast is the one
+// heavy thing, so these numbers answer the question a stutter always asks: is the CPU out of time
+// (frame/ground high) or is the frame being thrown away after we hand it over (frame low, FPS low)?
+const PF={on:!!SET.perf,fps:0,js:0,gnd:0,worst:0,frames:0,t0:0,jsSum:0,gndSum:0,
+  app:/; wv\)/.test(navigator.userAgent)};
+function pfFrame(jsMs){const p=PF;p.frames++;p.jsSum+=jsMs;if(jsMs>p.worst)p.worst=jsMs;
+  if(!p.t0)p.t0=performance.now();const el=performance.now()-p.t0;if(el<500)return;
+  p.fps=Math.round(p.frames*1000/el);p.js=+(p.jsSum/p.frames).toFixed(1);p.gnd=+(p.gndSum/p.frames).toFixed(1);
+  p.worst=+p.worst.toFixed(1);p.frames=0;p.jsSum=0;p.gndSum=0;p.t0=0}function drawPF(){const p=PF;
+  const l1='FPS '+p.fps+'  frame '+p.js+'ms  worst '+(+p.worst).toFixed(1)+'ms';
+  const l2='ground '+p.gnd+'ms  '+SW+'x'+SH+'  '+(p.app?'app':'web');
+  const w=Math.max(txtW(l1),txtW(l2))+10;
+  ctx.fillStyle='rgba(6,8,14,.8)';ctx.fillRect(3,3,w,22);
+  txt(l1,8,5,{color:'#9ff5e6',ol:null});txt(l2,8,14,{color:'#ffd35a',ol:null})}
+
 /* ============ MAIN LOOP ============ */
 let last=performance.now();
 cv.addEventListener('pointermove',()=>{PTR.mv=true});
-function frame(now){requestAnimationFrame(frame);let dt=(now-last)/1000;last=now;if(!(dt>0))dt=0;if(dt>.1)dt=.1;sceneT+=dt;
+function frame(now){requestAnimationFrame(frame);const pf0=PF.on?performance.now():0;GNDF=0;let dt=(now-last)/1000;last=now;if(!(dt>0))dt=0;if(dt>.1)dt=.1;sceneT+=dt;
   pollInput();if(hit('mute')){Music.toggle();SET.music=Music.on!==false;saveSet()}
   W=SW;H=SH;ctx=MCTX;const S=SCN[scene];UI=[];
   try{if(!ERR){if(!(typeof POP!=='undefined'&&POP.open)&&!(typeof FR!=='undefined'&&FR.isOpen())&&!(typeof PXA!=='undefined'&&PXA.isOpen())&&!ADS.busy&&!VER.isOpen())S.update&&S.update(dt);W=SW;H=SH;S.draw&&S.draw(dt)}}catch(e){ERR=e;console.error(e)}
@@ -2033,8 +2128,9 @@ function frame(now){requestAnimationFrame(frame);let dt=(now-last)/1000;last=now
   if(ERR){ctx.fillStyle='#300';ctx.fillRect(0,0,W,40);txt('ERROR: '+String(ERR.message||ERR).slice(0,60),4,4,{color:'#fff'});txt(String(ERR.stack||'').split('\n')[1]||'',4,16,{color:'#fcc'})}
   if(PTR.click){for(let i=UI.length-1;i>=0;i--){const u=UI[i];if(PTR.x>=u.x&&PTR.x<u.x+u.w&&PTR.y>=u.y&&PTR.y<u.y+u.h){if(u.fn)u.fn();break}}PTR.click=false}
   PTR.mv=false;
-  {const tOn=(touchMode&&SET.ovl!==false&&scene==='race'&&RACE&&!RACE.paused&&!RACE.results&&HUMANS.length<=1);if(!tOn&&TSTK.on)TSTK.reset();const c=tOn?'on':'';if(TB.className!==c){TB.className=c;if(tOn)TSTK.home()}}}
-function boot(){try{vrPendApply()}catch(e){}try{if(SET.music===false&&Music.on!==false)Music.toggle();go('boot')}catch(e){ERR=e;console.error(e)}}
+  {const tOn=(touchMode&&SET.ovl!==false&&scene==='race'&&RACE&&!RACE.paused&&!RACE.results&&HUMANS.length<=1);if(!tOn&&TSTK.on)TSTK.reset();const c=tOn?'on':'';if(TB.className!==c){TB.className=c;if(tOn)TSTK.home()}}
+  if(PF.on){if(pf0)pfFrame(performance.now()-pf0);drawPF()}gqTick()}
+function boot(){try{vrPendApply()}catch(e){}if(SET.gq!=null){GAUTO=SET.gq<0;if(!GAUTO)gqSet(SET.gq)}try{if(SET.music===false&&Music.on!==false)Music.toggle();go('boot')}catch(e){ERR=e;console.error(e)}}
 
 /* ============ GLOBE (pixel earth, per-pixel sphere lookup) ============ */
 // rough coastlines as lon,lat pairs

@@ -161,7 +161,7 @@ const ADS=(()=>{
    can't go online until it is updated. If the site can't be reached, the game goes online anyway: a site that is
    down shouldn't stop anyone playing. CUR and SITE are set by set_version.py. Portal builds skip the check. */
 const VER=(()=>{
-  const CUR='1.2',SITE='https://greenlight-studios.github.io';
+  const CUR='1.41',SITE='https://greenlight-studios.github.io';
   let el=null,busy=false,cache=null,cacheT=0,padRaf=0;
   // a copy served from the site itself reads the file next to it; other copies (download, app) ask SITE
   const onSite=()=>/^https?:$/.test(location.protocol)&&/\/games\/[^/]*$/.test(location.pathname);
@@ -4277,7 +4277,8 @@ function sizeCanvas(){
     scale=Math.max(1,UI.base==='menu'?Math.floor(physW/240):Math.round(physW/300));
     W=Math.ceil(physW/scale);H=clamp(Math.floor(avail*dpr/scale),170,290);
   }else{
-    const physH=Math.round(Math.min(cssW*9/16,avail)*dpr);
+    // fill the whole window: the old code capped the height at 16:9, which left bars on a 4:3 screen
+    const physH=Math.round(avail*dpr);
     scale=Math.max(1,Math.round(physH/225));
     W=Math.ceil(physW/scale);H=clamp(Math.ceil(physH/scale),170,290);
   }
@@ -4352,9 +4353,14 @@ function stageBlades(cx,yBase,front,push){
     }
   }
 }
+// scratch buffers for shadowCols: it runs for every lit surface each frame, and it used to allocate two
+// typed arrays per call (plus a bayer() call per pixel) - garbage on the heap at 60 Hz
+let SCN_N=null,SCU_N=null;
 function shadowCols(cx,par,surf,yBase,bottom,seed){
   const t=simTime,sx=Math.round(cx*par),SL=Math.ceil((bottom-yBase)*1.3)+4,N=W+SL;
-  const ns=new Float32Array(N),su=new Int16Array(W);
+  if(!SCN_N||SCN_N.length<N)SCN_N=new Float32Array(N);
+  if(!SCU_N||SCU_N.length<W)SCU_N=new Int16Array(W);
+  const ns=SCN_N,su=SCU_N;
   for(let x=0;x<N;x++)ns[x]=vnoise((sx+x+t*16)/150,seed);
   let top=bottom;
   for(let x=0;x<W;x++){su[x]=surf(sx+x)+yBase;if(su[x]<top)top=su[x]}
@@ -4364,7 +4370,7 @@ function shadowCols(cx,par,surf,yBase,bottom,seed){
     let run=-1;
     for(let x=0;x<=W;x++){
       let on=false;
-      if(x<W&&y>=su[x]){const n=ns[Math.min(N-1,x+o)];on=n>.64||(n>.6&&bayer(x,y)<(n-.6)/.04)}
+      if(x<W&&y>=su[x]){const n=ns[Math.min(N-1,x+o)];on=n>.64||(n>.6&&BAYER[((y&3)<<2)|(x&3)]<(n-.6)/.04)}
       if(on&&run<0)run=x;
       else if(!on&&run>=0){ctx.fillRect(run,y,x-run,1);run=-1}
     }
@@ -6359,7 +6365,8 @@ function idleBake(){ // the other stages cook in the background while you sit in
       if(!st.gen)st.gen=st.bake();
       if(st.gen.next().done){st.gen=null;st.baked=true}
     }else st.thumb=stageStill(st,96,60);
-    idleAt=performance.now()+40;
+    const cost=performance.now()-t0;
+    idleAt=performance.now()+Math.max(40,cost*6); // a slow layer must not make the menu stutter every 40 ms
     return;
   }
   idleAt=t0+1e9;
@@ -6573,6 +6580,7 @@ $('b-reset').addEventListener('click',()=>{resetWorld();syncUI();draw();updateRe
 $('b-pause').addEventListener('click',()=>{paused=!paused;syncUI()});
 const GAME=new Set(['KeyP','KeyO','KeyI','KeyU','KeyW','KeyA','KeyS','KeyD','Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight']);
 addEventListener('keydown',e=>{
+  if(e.code==='F3'){e.preventDefault();PERF.on=!PERF.on;S.perf=PERF.on;saveS();return}
   if(lanPop.isOpen()&&e.target&&e.target.closest&&e.target.closest('#lan-pop'))return;
   if(pxPop.isOpen()||FR.isOpen()||typeof PXA!=='undefined'&&PXA.isOpen()||ADS.busy||VER.isOpen())return;
   if(e.key==='Tab')document.body.classList.add('tabbing');
@@ -6681,13 +6689,24 @@ for(let i=0;i<95;i++){
 }
 Object.assign(GLYPHS,{g:[0x18,0xA4,0xA4,0xA4,0x7C],j:[0x40,0x80,0x84,0x7D],p:[0xFC,0x24,0x24,0x24,0x18],q:[0x18,0x24,0x24,0x18,0xFC],y:[0x1C,0xA0,0xA0,0xA0,0x7C]});
 const uiW=(s,sc=1)=>{let w=0;for(const ch of s)w+=((GLYPHS[ch]||GLYPHS['?']).length+1)*sc;return Math.max(0,w-sc)};
+// Text is drawn glyph-by-glyph, one fillRect per lit pixel, and the HUD redraws every frame. Bake each
+// string into a small canvas once and blit that instead: same glyphs, a couple of calls per string.
+const TXC=new Map();
 function uiText(s,x,y,c,sc=1){
-  ctx.fillStyle=c;x=Math.round(x);y=Math.round(y);
-  for(const ch of s){
-    const g=GLYPHS[ch]||GLYPHS['?'];
-    for(let i=0;i<g.length;i++)for(let r=0;r<8;r++)if(g[i]>>r&1)ctx.fillRect(x+i*sc,y+r*sc,sc,sc);
-    x+=(g.length+1)*sc;
+  s=String(s);const key=s+'\u0001'+c+'\u0001'+sc;
+  let cv=TXC.get(key);
+  if(!cv){
+    const w=Math.max(1,uiW(s,sc)),h=8*sc;cv=document.createElement('canvas');cv.width=w;cv.height=h;
+    const g=cv.getContext('2d');g.fillStyle=c;
+    let xx=0;
+    for(const ch of s){
+      const gl=GLYPHS[ch]||GLYPHS['?'];
+      for(let i=0;i<gl.length;i++){const col=gl[i];for(let r=0;r<8;r++)if(col>>r&1)g.fillRect(xx+i*sc,r*sc,sc,sc)}
+      xx+=(gl.length+1)*sc;
+    }
+    TXC.set(key,cv);if(TXC.size>900)TXC.clear();
   }
+  ctx.drawImage(cv,Math.round(x),Math.round(y));
 }
 function uiTextO(s,x,y,c,sc=1,o='#1f2138'){
   const d=Math.max(1,sc>>1);
@@ -7501,17 +7520,18 @@ function buildItems(){
     const tot=W-16,tw=Math.floor((tot-(cn-1)*gap-Math.floor(th/SL))/cn),y0=H-bH-6-(th+gap)*rows+gap;
     STAGES.forEach((st,i)=>add({id:st.id,label:st.name,desc:st.desc,kind:'stage',idx:i,r:{x:8+(i%cn)*(tw+gap),y:y0+Math.floor(i/cn)*(th+gap),w:tw,h:th},act:()=>UI.selMode==='training'?loadThen(startTraining,rndR(1.2,2.2)):loadThen(startMatch,rndR(1.6,3.2))}));
   }else if(s==='options'){
-    const narrow=W<320,x=narrow?8:16,w=narrow?W-20:Math.round(W*.38),y=28,st=Math.max(15,Math.min(23,Math.floor((H-y-24-20)/9))),rh=Math.min(20,st-2); // ten rows that fit short screens too
+    const narrow=W<320,x=narrow?8:16,w=narrow?W-20:Math.round(W*.38),y=28,st=Math.max(14,Math.min(22,Math.floor((H-y-24-20)/11))),rh=Math.min(20,st-2); // eleven rows that fit short screens too
     add({id:'snd',label:'Sound',kind:'row',get:()=>soundOn?'On':'Off',cycle:()=>{soundOn=!soundOn;S.snd=soundOn;saveS();unlockAudio();syncUI()},r:{x,y,w,h:rh}});
     add({id:'mus',label:'Music',kind:'row',get:()=>S.mus!==false?'On':'Off',cycle:()=>{S.mus=S.mus===false;saveS();unlockAudio()},r:{x,y:y+st*1,w,h:rh}});
     add({id:'shake',label:'Screen shake',kind:'row',get:()=>S.shake?'On':'Off',cycle:()=>{S.shake=!S.shake;saveS()},r:{x,y:y+st*2,w,h:rh}});
     add({id:'lit',label:'Dynamic light',kind:'row',get:()=>S.lit!==false?'On':'Off',cycle:()=>{S.lit=S.lit===false;saveS()},r:{x,y:y+st*3,w,h:rh}});
     add({id:'ovl',label:'Touch controls',kind:'row',get:()=>S.ovl!==false?'On':'Off',cycle:()=>{S.ovl=S.ovl===false;saveS()},r:{x,y:y+st*4,w,h:rh}});
-    add({id:'save',label:'Save data',kind:'row',act:()=>pxPop.open(),r:{x,y:y+st*5,w,h:rh}});
-    add({id:'fs',label:'Fullscreen',kind:'row',get:()=>isFS()?'On':'Off',cycle:()=>{S.fs=!isFS();saveS();setFS(S.fs);setTimeout(buildItems,120)},r:{x,y:y+st*6,w,h:rh}});
-    add({id:'bmus',label:'Battle music',kind:'row',get:()=>S.bmus==='shuffle'?'Shuffle':'Stage',cycle:()=>{S.bmus=S.bmus==='shuffle'?'stage':'shuffle';saveS()},r:{x,y:y+st*7,w,h:rh}});
-    add({id:'jbox',label:'Music player',kind:'row',act:()=>{Music.jb=null;go(()=>setScreen('jukebox'))},r:{x,y:y+st*8,w,h:rh}});
-    add({id:'acct',label:'Account',kind:'row',act:()=>{if(typeof PXA!=='undefined')PXA.openAccount()},r:{x,y:y+st*9,w,h:rh}});
+    add({id:'perf',label:'Perf stats',kind:'row',get:()=>PERF.on?'On':'Off',cycle:()=>{PERF.on=!PERF.on;S.perf=PERF.on;saveS()},r:{x,y:y+st*5,w,h:rh}});
+    add({id:'save',label:'Save data',kind:'row',act:()=>pxPop.open(),r:{x,y:y+st*6,w,h:rh}});
+    add({id:'fs',label:'Fullscreen',kind:'row',get:()=>isFS()?'On':'Off',cycle:()=>{S.fs=!isFS();saveS();setFS(S.fs);setTimeout(buildItems,120)},r:{x,y:y+st*7,w,h:rh}});
+    add({id:'bmus',label:'Battle music',kind:'row',get:()=>S.bmus==='shuffle'?'Shuffle':'Stage',cycle:()=>{S.bmus=S.bmus==='shuffle'?'stage':'shuffle';saveS()},r:{x,y:y+st*8,w,h:rh}});
+    add({id:'jbox',label:'Music player',kind:'row',act:()=>{Music.jb=null;go(()=>setScreen('jukebox'))},r:{x,y:y+st*9,w,h:rh}});
+    add({id:'acct',label:'Account',kind:'row',act:()=>{if(typeof PXA!=='undefined')PXA.openAccount()},r:{x,y:y+st*10,w,h:rh}});
   }else if(s==='jukebox'){
     // music player: Smash tracks on the left, the Kart originals on the right
     const L=Music.list,half=Math.ceil(L.length/2),narrow=W<320,gap=6,x0=narrow?6:12,cw=Math.floor((W-x0*2-gap)/2),y=42,st=Math.max(13,Math.min(20,Math.floor((H-y-22)/half))),rh=st-2;
@@ -10930,12 +10950,27 @@ function drawSignal(){
   for(let i=0;i<4;i++){const h=3+i*2,x=x0+i*5,y=y0+9-h;ctx.fillStyle=UC.out;ctx.fillRect(x-1,y-1,5,h+2);ctx.fillStyle=i<n?col:UC.line;ctx.fillRect(x,y,3,h)}
 }
 
+/* ---------- perf overlay (Options -> Perf stats, or F3) ---------- */
+const PERF={on:!!(typeof S!=='undefined'&&S&&S.perf),fps:0,js:0,worst:0,frames:0,t0:0,sum:0,
+  app:/; wv\)/.test(navigator.userAgent)};
+function pfFrame(jsMs){const p=PERF;p.frames++;p.sum+=jsMs;if(jsMs>p.worst)p.worst=jsMs;
+  if(!p.t0)p.t0=performance.now();const el=performance.now()-p.t0;if(el<500)return;
+  p.fps=Math.round(p.frames*1000/el);p.js=+(p.sum/p.frames).toFixed(1);p.worst=+p.worst.toFixed(1);
+  p.frames=0;p.sum=0;p.t0=0}
+function drawPF(){const p=PERF;
+  const a='FPS '+p.fps+'  FRAME '+p.js+'MS',b2='WORST '+p.worst+'MS  '+W+'X'+H+'  '+(p.app?'APP':'WEB');
+  const w=Math.max(uiW(a),uiW(b2))+8;
+  ctx.fillStyle='rgba(6,8,14,.8)';ctx.fillRect(2,2,w,22);
+  uiText(a,6,4,'#9ff5e6');uiText(b2,6,13,'#ffd35a')}
+
 /* ---------- loop ---------- */
 const FIX=1/60;let acc=0,lastT=0;
 function frame(now){
   const d=Math.min(.1,(now-lastT)/1000||0);lastT=now;
+  const t0=PERF.on?performance.now():0;
   runFrame(d);
   try{Music.direct()}catch(e){}
+  if(t0){pfFrame(performance.now()-t0);drawPF()}
   requestAnimationFrame(frame);
 }
 function runFrame(d){
