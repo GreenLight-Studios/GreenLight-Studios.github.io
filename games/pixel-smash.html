@@ -161,7 +161,7 @@ const ADS=(()=>{
    can't go online until it is updated. If the site can't be reached, the game goes online anyway: a site that is
    down shouldn't stop anyone playing. CUR and SITE are set by set_version.py. Portal builds skip the check. */
 const VER=(()=>{
-  const CUR='1.41',SITE='https://greenlight-studios.github.io';
+  const CUR='1.411',SITE='https://greenlight-studios.github.io';
   let el=null,busy=false,cache=null,cacheT=0,padRaf=0;
   // a copy served from the site itself reads the file next to it; other copies (download, app) ask SITE
   const onSite=()=>/^https?:$/.test(location.protocol)&&/\/games\/[^/]*$/.test(location.pathname);
