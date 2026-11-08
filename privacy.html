@@ -29,16 +29,29 @@
     <div style="max-width:820px;margin:0 auto"><a class="home" href="index.html">&#9664; Greenlight Studios</a></div>
     <article class="panel">
       <h1>Privacy</h1>
-      <small>Last updated 6 November 2026</small>
+      <small>Last updated 7 November 2026</small>
 
       <h2>The short version</h2>
-      <p>We don't run accounts or servers, and we don't collect your personal information. This website shows ads from Google AdSense, which uses cookies. The games you download, and the Android app, have no ads and no tracking.</p>
+      <p>Accounts are optional. If you never make one, we store no account data about you and your progress stays on your device. (The games still go online to check for updates and for online play, described below.) If you choose to make one, we store a small amount of data (listed below) so you can sign in on other devices. This website shows ads from Google AdSense, which uses cookies. The games you download, and the Android app, have no ads and no analytics. The games only contact the internet to check for updates, for online play, and for your account if you make one.</p>
+
+      <h2>Accounts (optional)</h2>
+      <p>You can play without an account. If you create one, we store:</p>
+      <ul>
+        <li>your username;</li>
+        <li>your email address, only if you choose to add one;</li>
+        <li>your save data (progress, best times and ratings) and your friends list;</li>
+        <li>the time you were last online.</li>
+      </ul>
+      <p>Part of this is a public profile that other players can see: your username, friend code, VR and Power ratings, the fighter you play most (if the game shares it) and when you were last online. Your email, password, save details and friends list are never public.</p>
+      <p>This data is kept with Google Firebase (Authentication and Firestore). Sign-in requests pass through a small server we run on Cloudflare, which may process your IP address to limit abuse. Your password passes through our login helper to Firebase to be checked. We never store it, and Firebase keeps only a scrambled (hashed) version. If you get a recovery code, we store only a scrambled (hashed) version of it, never the code itself.</p>
+      <p>If you add an email, it is used only to reset your password. We do not send marketing, and we do not sell or share it.</p>
+      <p>To delete your account, open Account in the game and choose Delete my account. This permanently removes all your account data: your login, email, username, save, friends list, recovery code and online profile. It can't be undone.</p>
 
       <h2>Game saves</h2>
-      <p>Pixel Smash and Pixel Smash Kart keep your progress, settings, username, friend code and friends list in your browser's local storage, on your device. It is never sent to us. Clearing your browser data deletes it, so copy a save code first if you want to keep it.</p>
+      <p>Without an account, Pixel Smash and Pixel Smash Kart keep your progress, settings, username, friend code and friends list in your browser's local storage, on your device. It is not sent to us. Clearing your browser data deletes it, so copy a save code first if you want to keep it.</p>
 
       <h2>Online play and friends</h2>
-      <p>Online and LAN play connect your device directly to other players (WebRTC). To find each other, the games use the public PeerJS matchmaking server. That server, and the players you connect to, can see your IP address, as with any online game. Your username, friend code, fighter or racer and rating are shared with the players you meet. We don't receive or store any of it.</p>
+      <p>Online and LAN play connect your device directly to other players (WebRTC). To find each other, the games use the public PeerJS matchmaking server. That server, and the players you connect to, can see your IP address, as with any online game. Your username, friend code, fighter or racer and rating are shared with the players you meet. If you play as a guest, we don't receive or store any of it. If you have an account, your username, friend code, rating and friends list are stored with your account (see Accounts above).</p>
 
       <h2>Ads and cookies</h2>
       <p>This website uses Google AdSense to show ads. Third-party vendors, including Google, use cookies to show ads based on your earlier visits to this website and other websites. Google's advertising cookies let it and its partners show you ads based on those visits.</p>

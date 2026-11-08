@@ -161,7 +161,7 @@ const ADS=(()=>{
    can't go online until it is updated. If the site can't be reached, the game goes online anyway: a site that is
    down shouldn't stop anyone playing. CUR and SITE are set by set_version.py. Portal builds skip the check. */
 const VER=(()=>{
-  const CUR='1.1',SITE='https://greenlight-studios.github.io';
+  const CUR='1.2',SITE='https://greenlight-studios.github.io';
   let el=null,busy=false,cache=null,cacheT=0,padRaf=0;
   // a copy served from the site itself reads the file next to it; other copies (download, app) ask SITE
   const onSite=()=>/^https?:$/.test(location.protocol)&&/\/games\/[^/]*$/.test(location.pathname);
@@ -6574,7 +6574,7 @@ $('b-pause').addEventListener('click',()=>{paused=!paused;syncUI()});
 const GAME=new Set(['KeyP','KeyO','KeyI','KeyU','KeyW','KeyA','KeyS','KeyD','Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight']);
 addEventListener('keydown',e=>{
   if(lanPop.isOpen()&&e.target&&e.target.closest&&e.target.closest('#lan-pop'))return;
-  if(pxPop.isOpen()||FR.isOpen()||ADS.busy||VER.isOpen())return;
+  if(pxPop.isOpen()||FR.isOpen()||typeof PXA!=='undefined'&&PXA.isOpen()||ADS.busy||VER.isOpen())return;
   if(e.key==='Tab')document.body.classList.add('tabbing');
   if(UI.screen==='onlname'&&!UI.wipe){ // typing a username goes to the hidden text box
     unlockAudio();
@@ -6712,7 +6712,11 @@ try{Object.assign(S,JSON.parse(localStorage.getItem('pixelsmash.settings')||loca
 if(!S.lv9){S.lv=[0,4,7][S.lv|0]===undefined?4:[0,4,7][S.lv|0];S.lv9=1} // the old Easy, Normal and Hard become levels 1, 5 and 8
 S.stocks=clamp(S.stocks|0,0,5);if(!TIMES.includes(S.time))S.time=0;if(!S.time&&!S.stocks)S.stocks=3;
 S.lv=clamp(S.lv|0,0,CPU_LV.length-1);S.hero=clamp(S.hero|0,0,ROSTER.length-1);S.foe=clamp(S.foe|0,0,ROSTER.length-1);S.stage=clamp(S.stage|0,0,STAGES.length-1);
-const saveS=()=>{try{localStorage.setItem('pixelsmash.settings',JSON.stringify(S))}catch(e){}};
+// PXA's cloud sync can rewrite Power in storage behind the game's back: take it before changing Power, and before every save
+let gspSeen=JSON.stringify(S.gsp||{});
+const gspLS=()=>{try{const o=JSON.parse(localStorage.getItem('pixelsmash.settings')||'{}');return o.gsp&&typeof o.gsp==='object'?o.gsp:null}catch(e){return null}};
+function gspPull(){const g=gspLS();if(g&&JSON.stringify(g)!==gspSeen){S.gsp=g;gspSeen=JSON.stringify(g)}}
+const saveS=()=>{gspPull();try{localStorage.setItem('pixelsmash.settings',JSON.stringify(S))}catch(e){}gspSeen=JSON.stringify(S.gsp||{})};
 if(S.ppend&&typeof S.ppend==='object'){const q=S.ppend,g=S.gsp||(S.gsp={}),dl=clamp(+q.dl||0,0,800000);if(typeof q.id==='string'&&dl>0)g[q.id]=Math.round(Math.max(100000,(g[q.id]===undefined?7000000:g[q.id])-dl));delete S.ppend;saveS()}
 /* shared with Pixel Smash Kart: the same online name, and one save file for both games.
    File: {format:'pixel-save', v:1, name, kart:{onl:{name,vr},set,tt}, smash:<these settings, incl. onlName and Power>} */
@@ -6726,7 +6730,7 @@ function pxBundle(){const kart=pxKart();return{format:'pixel-save',v:1,saved:new
 function pxCode(o){return PX.PRE+btoa(unescape(encodeURIComponent(JSON.stringify(o))))}
 function pxParse(t){t=String(t||'').trim();if(t.startsWith(PX.PRE))t=decodeURIComponent(escape(atob(t.slice(PX.PRE.length).replace(/\s+/g,''))));const d=JSON.parse(t);if(!d||d.format!=='pixel-save')throw new Error('format');return d}
 function pxApply(d){const nm=PX.ok(d.name)?d.name:null;if(d.friends&&typeof FR!=='undefined')FR.apply(d.friends);
-  if(d.smash&&typeof d.smash==='object'){const sm=Object.assign({},d.smash);delete sm.onlName;Object.assign(S,sm)}if(nm)S.onlName=nm;saveS();
+  gspSeen=JSON.stringify(gspLS()||S.gsp||{});if(d.smash&&typeof d.smash==='object'){const sm=Object.assign({},d.smash);delete sm.onlName;Object.assign(S,sm)}if(nm)S.onlName=nm;saveS();
   const K=d.kart;if(K&&typeof K==='object'){const k2=JSON.parse(JSON.stringify(K));if(nm&&k2.onl)k2.onl.name=nm;PX.put(PX.COPY,k2);
     const o=Object.assign(PX.get(PX.KART)||{},k2.onl||{});if(nm)o.name=nm;PX.put(PX.KART,o);if(k2.set&&typeof k2.set==='object')PX.put('psk_set',Object.assign(PX.get('psk_set')||{},k2.set));
     if(k2.tt&&typeof k2.tt==='object')for(const id in k2.tt)if(/^[A-Za-z0-9_]{1,24}$/.test(id))PX.put('psk_tt_'+id,k2.tt[id])}}
@@ -7497,7 +7501,7 @@ function buildItems(){
     const tot=W-16,tw=Math.floor((tot-(cn-1)*gap-Math.floor(th/SL))/cn),y0=H-bH-6-(th+gap)*rows+gap;
     STAGES.forEach((st,i)=>add({id:st.id,label:st.name,desc:st.desc,kind:'stage',idx:i,r:{x:8+(i%cn)*(tw+gap),y:y0+Math.floor(i/cn)*(th+gap),w:tw,h:th},act:()=>UI.selMode==='training'?loadThen(startTraining,rndR(1.2,2.2)):loadThen(startMatch,rndR(1.6,3.2))}));
   }else if(s==='options'){
-    const narrow=W<320,x=narrow?8:16,w=narrow?W-20:Math.round(W*.38),y=28,st=Math.max(15,Math.min(23,Math.floor((H-y-24-20)/8))),rh=Math.min(20,st-2); // nine rows that fit short screens too
+    const narrow=W<320,x=narrow?8:16,w=narrow?W-20:Math.round(W*.38),y=28,st=Math.max(15,Math.min(23,Math.floor((H-y-24-20)/9))),rh=Math.min(20,st-2); // ten rows that fit short screens too
     add({id:'snd',label:'Sound',kind:'row',get:()=>soundOn?'On':'Off',cycle:()=>{soundOn=!soundOn;S.snd=soundOn;saveS();unlockAudio();syncUI()},r:{x,y,w,h:rh}});
     add({id:'mus',label:'Music',kind:'row',get:()=>S.mus!==false?'On':'Off',cycle:()=>{S.mus=S.mus===false;saveS();unlockAudio()},r:{x,y:y+st*1,w,h:rh}});
     add({id:'shake',label:'Screen shake',kind:'row',get:()=>S.shake?'On':'Off',cycle:()=>{S.shake=!S.shake;saveS()},r:{x,y:y+st*2,w,h:rh}});
@@ -7507,6 +7511,7 @@ function buildItems(){
     add({id:'fs',label:'Fullscreen',kind:'row',get:()=>isFS()?'On':'Off',cycle:()=>{S.fs=!isFS();saveS();setFS(S.fs);setTimeout(buildItems,120)},r:{x,y:y+st*6,w,h:rh}});
     add({id:'bmus',label:'Battle music',kind:'row',get:()=>S.bmus==='shuffle'?'Shuffle':'Stage',cycle:()=>{S.bmus=S.bmus==='shuffle'?'stage':'shuffle';saveS()},r:{x,y:y+st*7,w,h:rh}});
     add({id:'jbox',label:'Music player',kind:'row',act:()=>{Music.jb=null;go(()=>setScreen('jukebox'))},r:{x,y:y+st*8,w,h:rh}});
+    add({id:'acct',label:'Account',kind:'row',act:()=>{if(typeof PXA!=='undefined')PXA.openAccount()},r:{x,y:y+st*9,w,h:rh}});
   }else if(s==='jukebox'){
     // music player: Smash tracks on the left, the Kart originals on the right
     const L=Music.list,half=Math.ceil(L.length/2),narrow=W<320,gap=6,x0=narrow?6:12,cw=Math.floor((W-x0*2-gap)/2),y=42,st=Math.max(13,Math.min(20,Math.floor((H-y-22)/half))),rh=st-2;
@@ -7551,7 +7556,7 @@ function buildItems(){
     add({id:'fun',label:'For Fun',desc:'Four players, 3 minutes. Most KOs wins.',r:place(x0,top,tw,th),pal:UC.green,act:()=>ONL.pickMode('fun')});
     add({id:'glory',label:'For Glory',desc:'One on one, 3 stocks, 5 minutes. Win to gain Power.',r:place(x0+tw+gap,top,tw,th),pal:UC.amber,act:()=>ONL.pickMode('glory')});
     const rw=Math.min(150,Math.floor((tot-6)/2));
-    add({id:'rename',label:'Change name',kind:'row',act:()=>go(()=>setScreen('onlname')),r:{x:x0,y:bot+5,w:rw,h:rowH}});
+    add({id:'rename',label:'Change name',kind:'row',act:()=>typeof PXA!=='undefined'&&PXA.user()?PXA.openAccount():go(()=>setScreen('onlname')),r:{x:x0,y:bot+5,w:rw,h:rowH}});
     add({id:'friends',label:'Friends',kind:'row',act:()=>onlFriends(false),r:{x:x0+rw+6,y:bot+5,w:rw,h:rowH}});FR.host();
   }else if(s==='onlerr'){
     const w=Math.min(W-40,110);
@@ -7794,7 +7799,7 @@ const KEY_NAV={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'le
 const menuKeys=new Set(); // arrows held down in the menus, for the hand on the character screen
 const padUI={}; // per gamepad: buttons last frame, stick direction, repeat timer
 function pollPad(d){
-  if(FR.isOpen()||VER.isOpen())return;
+  if(FR.isOpen()||typeof PXA!=='undefined'&&PXA.isOpen()||VER.isOpen())return;
   for(const g of padList()){
     if(!g||!g.connected)continue;
     const P=padUI[g.index]||(padUI[g.index]={btn:{},dir:null,hold:0});
@@ -8874,6 +8879,1377 @@ function introSting(){ // the hit the title card makes when the logo slams down
 function loadThen(fn,dur){
   go(()=>{UI.load={t:0,dur:dur||rndR(1.1,2.2),fn,tip:pick(ONL_TIPS)};UI.frozen=true;setScreen('loading')});
 }
+/* ==== PXACCT BEGIN ==== */
+const PXA_CFG={"apiKey":"AIzaSyCqFaPGUiM3b8ZbcgxMNqVyijAUgwLmK_Q","projectId":"pixel-games-3afb5","worker":"https://pixel-auth.pixelsmash.workers.dev"};
+(function (G) {
+  'use strict';
+  var VR_DEF = 1000, VR_FLOOR = 1, PW_DEF = 7000000, PW_FLOOR = 100000;
+  var FFIELDS = ['c', 'k', 'n', 'a', 'sd', 'vr', 'pw', 'pc', 'mode', 'ls'];
+
+  function normName(s) {
+    if (typeof s !== 'string') return null;
+    s = s.trim();
+    if (!/^[A-Za-z0-9_.\-]{3,12}$/.test(s)) return null;
+    s = s.toLowerCase();
+    return s.indexOf('guest') === 0 ? null : s;
+  }
+
+  function guestName(rand) {
+    rand = rand || Math.random;
+    return 'Guest' + (1000 + Math.floor(rand() * 9000));
+  }
+
+  function rj(ls, k) {
+    try {
+      var v = ls.getItem(k);
+      if (v == null) return null;
+      var o = JSON.parse(v);
+      return o && typeof o === 'object' ? o : null;
+    } catch (e) { return null; }
+  }
+  function wj(ls, k, o) { ls.setItem(k, JSON.stringify(o)); }
+  function isNum(x) { return typeof x === 'number' && isFinite(x); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function readLocal(ls) {
+    var onl = rj(ls, 'psk_onl');
+    var sm = rj(ls, 'pixelsmash.settings');
+    var ks = rj(ls, 'psk_smash');
+    var gsp = (sm && sm.gsp && typeof sm.gsp === 'object' && sm.gsp) || (ks && ks.gsp && typeof ks.gsp === 'object' && ks.gsp) || {};
+    var tt = {}, i, k, n = ls.length, keys = [];
+    for (i = 0; i < n; i++) { k = ls.key(i); if (k && k.indexOf('psk_tt_') === 0) keys.push(k); }
+    keys.forEach(function (key) {
+      var o = rj(ls, key);
+      if (o) tt[key.slice(7)] = o;
+    });
+    var friends = [];
+    try { var raw = ls.getItem('pixel.friends'); var p = raw ? JSON.parse(raw) : null; if (Array.isArray(p)) friends = p; } catch (e) { }
+    return {
+      vr: onl && isNum(onl.vr) ? onl.vr : null,
+      gsp: clone(gsp),
+      tt: tt,
+      friends: friends,
+      me: rj(ls, 'pixel.me')
+    };
+  }
+
+  function writeLocal(ls, m) {
+    if (m.vr != null) {
+      var onl = rj(ls, 'psk_onl') || {};
+      onl.vr = m.vr;
+      wj(ls, 'psk_onl', onl);
+    }
+    var sm = rj(ls, 'pixelsmash.settings'), ks = rj(ls, 'psk_smash');
+    if (m.gsp) {
+      if (sm) { sm.gsp = clone(m.gsp); wj(ls, 'pixelsmash.settings', sm); }
+      if (ks) { ks.gsp = clone(m.gsp); wj(ls, 'psk_smash', ks); }
+      if (!sm && !ks) wj(ls, 'pixelsmash.settings', { gsp: clone(m.gsp) });
+    }
+    if (m.tt) Object.keys(m.tt).forEach(function (id) { wj(ls, 'psk_tt_' + id, m.tt[id]); });
+    if (m.friends) wj(ls, 'pixel.friends', m.friends);
+    if (m.me) wj(ls, 'pixel.me', m.me);
+  }
+
+  function deltas(local, base) {
+    base = base || {};
+    var bg = base.gsp || {};
+    var out = { vr: 0, gsp: {} };
+    // increments must be whole numbers (Firestore integerValue); null/NaN/strings count as absent
+    if (isNum(local.vr)) out.vr = Math.round(local.vr) - (isNum(base.vr) ? Math.round(base.vr) : VR_DEF);
+    var lg = local.gsp || {};
+    Object.keys(lg).forEach(function (id) {
+      if (!isNum(lg[id])) return;
+      var d = Math.round(lg[id]) - (isNum(bg[id]) ? Math.round(bg[id]) : PW_DEF);
+      if (d) out.gsp[id] = d;
+    });
+    return out;
+  }
+
+  function floorFix(cloud) {
+    var out = { vr: 0, gsp: {} };
+    if (isNum(cloud.vr) && Math.round(cloud.vr) < VR_FLOOR) out.vr = VR_FLOOR - Math.round(cloud.vr);
+    var g = cloud.gsp || {};
+    Object.keys(g).forEach(function (id) {
+      if (isNum(g[id]) && Math.round(g[id]) < PW_FLOOR) out.gsp[id] = PW_FLOOR - Math.round(g[id]);
+    });
+    return out;
+  }
+
+  function mergeTT(a, b) {
+    a = a || {}; b = b || {};
+    var out = {};
+    var ids = Object.keys(a).concat(Object.keys(b).filter(function (id) { return !(id in a); }));
+    function ok(r) { return r && typeof r === 'object' && isNum(r.t); } // a record without a numeric time is ignored
+    ids.forEach(function (id) {
+      var x = ok(a[id]) ? a[id] : null, y = ok(b[id]) ? b[id] : null;
+      if (!x && !y) return;
+      if (!x || !y) { out[id] = clone(x || y); return; }
+      var w = y.t < x.t ? y : x;
+      var r = clone(w);
+      var laps = [x.lap, y.lap].filter(isNum);
+      if (laps.length) r.lap = Math.min.apply(null, laps);
+      out[id] = r;
+    });
+    return out;
+  }
+
+  function zrec() { return { kart: { w: 0, l: 0 }, smash: { w: 0, l: 0 } }; }
+  function addRec(a, b) {
+    var r = zrec();
+    ['kart', 'smash'].forEach(function (g) {
+      ['w', 'l'].forEach(function (x) {
+        r[g][x] = ((a && a[g] && a[g][x]) || 0) + ((b && b[g] && b[g][x]) || 0);
+      });
+    });
+    return r;
+  }
+  function subRec(a, b) {
+    var r = zrec();
+    ['kart', 'smash'].forEach(function (g) {
+      ['w', 'l'].forEach(function (x) {
+        r[g][x] = Math.max(0, ((a && a[g] && a[g][x]) || 0) - ((b && b[g] && b[g][x]) || 0));
+      });
+    });
+    return r;
+  }
+  function pick(o) {
+    var r = {};
+    FFIELDS.forEach(function (f) { if (o[f] !== undefined) r[f] = o[f]; });
+    return r;
+  }
+
+  function mergeFriends(cloud, list, st, now) {
+    var dev = st.dev, known = st.known || [], recOthers = st.recOthers || {};
+    var cl = clone(cloud || {});
+    var localBy = {}, order = [];
+    (list || []).forEach(function (f) { if (f && f.c != null && !(f.c in localBy)) { localBy[f.c] = f; order.push(f.c); } });
+
+    order.forEach(function (c) {
+      var f = localBy[c], cf = cl[c];
+      var mine = subRec(f.rec, recOthers[c]);
+      if (!cf) {
+        cf = pick(f); cf.rec = {}; cf.rec[dev] = mine; cl[c] = cf;
+        return;
+      }
+      if (cf.rm != null) {
+        if ((f.a || 0) > cf.rm) {
+          delete cf.rm;
+          var keep = cf.rec || {};
+          var np = pick(f);
+          Object.keys(np).forEach(function (k) { cf[k] = np[k]; });
+          cf.rec = keep; cf.rec[dev] = mine;
+        }
+        return; // else removed elsewhere
+      }
+      if ((f.ls || 0) > (cf.ls || 0)) {
+        var p = pick(f);
+        Object.keys(p).forEach(function (k) { cf[k] = p[k]; });
+      }
+      cf.rec = cf.rec || {};
+      cf.rec[dev] = mine;
+    });
+
+    Object.keys(cl).forEach(function (c) {
+      var cf = cl[c];
+      if (cf.rm == null && !localBy[c] && known.indexOf(c) >= 0) cf.rm = now;
+    });
+
+    var outList = [], outKnown = [], outOthers = {}, seen = {};
+    function emit(c, base) {
+      var cf = cl[c];
+      if (!cf || cf.rm != null || seen[c]) return;
+      seen[c] = 1;
+      var f = base ? clone(base) : {};
+      FFIELDS.forEach(function (k) { if (cf[k] !== undefined) f[k] = cf[k]; });
+      var total = zrec(), others = zrec();
+      Object.keys(cf.rec || {}).forEach(function (d) {
+        total = addRec(total, cf.rec[d]);
+        if (d !== dev) others = addRec(others, cf.rec[d]);
+      });
+      f.rec = total;
+      outOthers[c] = others;
+      outKnown.push(c);
+      outList.push(f);
+    }
+    order.forEach(function (c) { emit(c, localBy[c]); });
+    Object.keys(cl).forEach(function (c) { emit(c, null); });
+    return { cloud: cl, list: outList, known: outKnown, recOthers: outOthers };
+  }
+
+  var X = {
+    normName: normName, guestName: guestName, readLocal: readLocal, writeLocal: writeLocal,
+    deltas: deltas, floorFix: floorFix, isNum: isNum, mergeTT: mergeTT, mergeFriends: mergeFriends,
+    VR_DEF: VR_DEF, VR_FLOOR: VR_FLOOR, PW_DEF: PW_DEF, PW_FLOOR: PW_FLOOR
+  };
+  if (typeof module === 'object' && module.exports) module.exports = X; else G.PXA_CORE = X;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+(function (G) {
+  'use strict';
+  var CORE = (typeof module === 'object' && module.exports) ? require('./core.js') : G.PXA_CORE;
+  var KEY = 'pixel.acct', DEVKEY = 'pixel.acct.dev', PREVKEY = 'pixel.acct.prev';
+  var REFRESH_BAD = /TOKEN_EXPIRED|USER_DISABLED|USER_NOT_FOUND|INVALID_REFRESH_TOKEN/;
+
+  // ---- Firestore value encoding ----
+  function toFs(v) {
+    if (v === null || v === undefined) return { nullValue: null };
+    if (typeof v === 'boolean') return { booleanValue: v };
+    if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+    if (typeof v === 'string') return { stringValue: v };
+    if (Array.isArray(v)) return { arrayValue: { values: v.map(toFs) } };
+    var f = {};
+    Object.keys(v).forEach(function (k) { if (v[k] !== undefined) f[k] = toFs(v[k]); });
+    return { mapValue: { fields: f } };
+  }
+  function fromFs(x) {
+    if (!x) return null;
+    if ('integerValue' in x) return Number(x.integerValue);
+    if ('doubleValue' in x) return x.doubleValue;
+    if ('stringValue' in x) return x.stringValue;
+    if ('booleanValue' in x) return x.booleanValue;
+    if ('arrayValue' in x) return (x.arrayValue.values || []).map(fromFs);
+    if ('mapValue' in x) return fromFields(x.mapValue.fields);
+    return null;
+  }
+  function fromFields(f) {
+    var o = {};
+    Object.keys(f || {}).forEach(function (k) { o[k] = fromFs(f[k]); });
+    return o;
+  }
+  function toFields(o) {
+    var f = {};
+    Object.keys(o).forEach(function (k) { f[k] = toFs(o[k]); });
+    return f;
+  }
+  function fp(a, b) { // field path; backtick-quote segments that are not plain identifiers
+    function q(s) { return /^[A-Za-z_][A-Za-z_0-9]*$/.test(s) ? s : '`' + s.replace(/\\/g, '\\\\').replace(/`/g, '\\`') + '`'; }
+    return b === undefined ? q(a) : q(a) + '.' + q(b);
+  }
+  function stable(v) {
+    if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
+    if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}';
+    return JSON.stringify(v);
+  }
+  function isNum(x) { return typeof x === 'number' && isFinite(x); }
+  function cl(o) { return JSON.parse(JSON.stringify(o)); }
+  function hasKeys(o) { return Object.keys(o).length > 0; }
+
+  function PXA_NET(cfg, deps) {
+    deps = deps || {};
+    var fetchF = deps.fetch || (G.fetch && G.fetch.bind(G));
+    var ls = deps.ls || G.localStorage;
+    var now = deps.now || Date.now;
+    var rand = deps.rand || Math.random;
+    var emu = cfg.emu || null;
+    var VR_DEF = CORE.VR_DEF, PW_DEF = CORE.PW_DEF;
+
+    var urlSignIn = (emu ? 'http://' + emu.auth + '/identitytoolkit.googleapis.com' : 'https://identitytoolkit.googleapis.com') +
+      '/v1/accounts:signInWithCustomToken?key=' + cfg.apiKey;
+    var urlRefresh = (emu ? 'http://' + emu.auth + '/securetoken.googleapis.com' : 'https://securetoken.googleapis.com') +
+      '/v1/token?key=' + cfg.apiKey;
+    var fsBase = (emu ? 'http://' + emu.fs : 'https://firestore.googleapis.com') + '/v1/projects/' + cfg.projectId + '/databases/(default)/documents';
+    var docRoot = 'projects/' + cfg.projectId + '/databases/(default)/documents';
+
+    // ---- session ----
+    function session() {
+      try { var v = ls.getItem(KEY); var o = v ? JSON.parse(v) : null; return o && typeof o === 'object' ? o : null; } catch (e) { return null; }
+    }
+    // Patch the signed-in session. No-op when nobody is signed in (or a different uid is): a late write from an
+    // in-flight sync must never resurrect a logged-out session or land on another account's.
+    function putSession(patch, uid) {
+      var s = session();
+      if (!s || !s.uid || (uid && s.uid !== uid)) return null;
+      Object.keys(patch).forEach(function (k) { if (patch[k] === undefined) delete s[k]; else s[k] = patch[k]; });
+      ls.setItem(KEY, JSON.stringify(s));
+      return s;
+    }
+    var ALNUM = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    function randStr(n) { var s = ''; for (var i = 0; i < n; i++) s += ALNUM.charAt(Math.floor(rand() * ALNUM.length)); return s; }
+    function devId() { // kept outside pixel.acct so a logout/login keeps the same device id (friend records stay per device)
+      var d = null;
+      try { d = ls.getItem(DEVKEY); } catch (e) { }
+      if (!d) { d = randStr(8); ls.setItem(DEVKEY, d); }
+      return d;
+    }
+    // ---- cross-tab lock ----
+    // Smash and Kart tabs share localStorage (pixel.acct). Every read-modify-write of the sync bookkeeping
+    // (sync, re-sign-in, logout, delete) runs under one lock so two tabs never upload the same delta.
+    // navigator.locks when there is one; else a localStorage lease {o: owner, x: expiry} re-checked after writing.
+    var LOCKKEY = 'pixel.acct.lock', LEASE = 120000;
+    var locks = ('locks' in deps) ? deps.locks : (G.navigator && G.navigator.locks && typeof G.navigator.locks.request === 'function' ? G.navigator.locks : null);
+    var sleep = deps.sleep || function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+    var owner = null;
+    function leaseGet() { try { var o = JSON.parse(ls.getItem(LOCKKEY) || 'null'); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } }
+    function leasePut() { ls.setItem(LOCKKEY, JSON.stringify({ o: owner, x: now() + LEASE })); }
+    async function leaseTake() {
+      if (!owner) owner = randStr(12);
+      for (;;) {
+        var l = leaseGet();
+        if (!l || l.o === owner || !(l.x > now())) {
+          try { leasePut(); } catch (e) { return; } // storage unusable: run unlocked
+          await sleep(30); // another tab may have written at the same moment: last writer wins
+          l = leaseGet();
+          if (l && l.o === owner) return;
+        }
+        await sleep(150);
+      }
+    }
+    function leaseDrop() { try { var l = leaseGet(); if (l && l.o === owner) ls.removeItem(LOCKKEY); } catch (e) { } }
+    // Not re-entrant: fn must never call withLock (or sync/resign) itself.
+    var localQ = Promise.resolve(); // the lease is per tab, so calls from this tab queue up here first
+    function withLock(fn) {
+      if (locks) {
+        var started = false;
+        return Promise.resolve().then(function () {
+          return locks.request('pxa-sync', function () { started = true; return fn(); });
+        }).catch(function (e) {
+          if (started) throw e;
+          locks = null; // e.g. SecurityError on an opaque (file://) origin: use the lease from now on
+          return withLock(fn);
+        });
+      }
+      var run = localQ.then(async function () {
+        await leaseTake();
+        var renew = setInterval(function () { try { var l = leaseGet(); if (l && l.o === owner) leasePut(); } catch (e) { } }, 10000);
+        try { return await fn(); } finally { clearInterval(renew); leaseDrop(); }
+      });
+      localQ = run.catch(function () { });
+      return run;
+    }
+
+    // Default = involuntary (revoked token): keep the sync bookkeeping in pixel.acct.prev so a same-account
+    // re-login does not double count. {voluntary:true} (user pressed log out) drops it.
+    function logoutLocal(o) {
+      try {
+        var s = session();
+        if (o && o.voluntary) ls.removeItem(PREVKEY);
+        else if (s && s.uid) ls.setItem(PREVKEY, JSON.stringify({ uid: s.uid, base: s.base || {}, pend: s.pend, known: s.known || [], recOthers: s.recOthers || {} }));
+        ls.removeItem(KEY);
+      } catch (e) { }
+    }
+    function resetLocalToDefaults() { // old account's values must never be pushed into a different account
+      var i, k, kill = [];
+      for (i = 0; i < ls.length; i++) { k = ls.key(i); if (k && k.indexOf('psk_tt_') === 0) kill.push(k); }
+      kill.forEach(function (key) { ls.removeItem(key); });
+      CORE.writeLocal(ls, { vr: VR_DEF, gsp: {}, friends: [] });
+    }
+
+    // ---- http ----
+    function NetErr(code) { var e = new Error(code); e.pxa = code; return e; }
+    var timeoutMs = deps.timeoutMs || 15000;
+    // One request, timeout covers headers AND body (a stalled r.json() must not hang a sync).
+    async function http(url, opts) { // network failure or hang -> NetErr('offline')
+      var ac = typeof AbortController === 'function' ? new AbortController() : null;
+      var o = Object.assign({}, opts);
+      if (ac) o.signal = ac.signal;
+      var tm;
+      var timeout = new Promise(function (_, rej) {
+        tm = setTimeout(function () { if (ac) { try { ac.abort(); } catch (e) { } } rej(NetErr('offline')); }, timeoutMs);
+      });
+      try {
+        return await Promise.race([(async function () {
+          var r = await fetchF(url, o);
+          var j = null;
+          try { j = await r.json(); } catch (e) { }
+          return { status: r.status, json: j };
+        })(), timeout]);
+      } catch (e) { throw NetErr('offline'); }
+      finally { clearTimeout(tm); }
+    }
+
+    async function worker(path, body) {
+      try {
+        var r = await http(cfg.worker.replace(/\/$/, '') + path, {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {})
+        });
+        if (r.status >= 500 || !r.json || typeof r.json !== 'object') return { ok: false, err: 'busy' };
+        return r.json;
+      } catch (e) { return { ok: false, err: 'busy' }; }
+    }
+
+    function jwtUid(tok) {
+      try {
+        var p = String(tok).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (p.length % 4) p += '=';
+        var o = JSON.parse(typeof atob === 'function' ? decodeURIComponent(escape(atob(p))) : Buffer.from(p, 'base64').toString('utf8'));
+        return o.user_id || o.sub || null;
+      } catch (e) { return null; }
+    }
+
+    async function signIn(customToken, extra) {
+      var r = await http(urlSignIn, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: customToken, returnSecureToken: true })
+      });
+      if (r.status !== 200 || !r.json || !r.json.idToken) throw NetErr('busy');
+      var j = r.json;
+      var uid = j.localId || jwtUid(j.idToken); // the real signInWithCustomToken reply has no localId
+      if (!uid) throw NetErr('busy');
+      var s = { uid: uid, id: j.idToken, refresh: j.refreshToken, exp: now() + Number(j.expiresIn || 3600) * 1000, dev: devId(), base: {}, known: [], recOthers: {}, ut: 0 };
+      var prev = null;
+      try { var pv = ls.getItem(PREVKEY); prev = pv ? JSON.parse(pv) : null; } catch (e) { }
+      if (prev && prev.uid === uid) {
+        s.base = prev.base || {}; s.known = prev.known || []; s.recOthers = prev.recOthers || {};
+        if (prev.pend) s.pend = prev.pend;
+      } else if (prev) resetLocalToDefaults();
+      Object.keys(extra || {}).forEach(function (k) { s[k] = extra[k]; });
+      ls.setItem(KEY, JSON.stringify(s));
+      try { ls.removeItem(PREVKEY); } catch (e) { }
+    }
+
+    async function idToken() {
+      var s = session();
+      if (!s) return null;
+      if (s.exp - now() > 300000) return s.id;
+      var r;
+      try {
+        r = await http(urlRefresh, {
+          method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(s.refresh)
+        });
+      } catch (e) { return s.exp > now() ? s.id : null; }
+      if (r.status === 200 && r.json && r.json.id_token) {
+        putSession({ id: r.json.id_token, refresh: r.json.refresh_token || s.refresh, exp: now() + Number(r.json.expires_in || 3600) * 1000 });
+        return r.json.id_token;
+      }
+      var msg = r.json && r.json.error && (r.json.error.message || r.json.error.status) || '';
+      if (REFRESH_BAD.test(String(msg))) { logoutLocal(); return null; }
+      return s.exp > now() ? s.id : null;
+    }
+
+    async function getPublic(path) {
+      var r;
+      try { r = await http(fsBase + '/' + path, { method: 'GET' }); } catch (e) { return null; }
+      if (r.status !== 200 || !r.json || !r.json.fields) return null;
+      return fromFields(r.json.fields);
+    }
+
+    // ---- sync ----
+    function authH(tok) { return { authorization: 'Bearer ' + tok, 'content-type': 'application/json' }; }
+    function isConflict(r) {
+      if (r.status === 409) return true;
+      var st = r.json && r.json.error && r.json.error.status;
+      return r.status === 400 && st === 'FAILED_PRECONDITION';
+    }
+
+    async function readSave(uid, tok) {
+      var r = await http(fsBase + '/users/' + uid + '/save/main', { method: 'GET', headers: authH(tok) });
+      if (r.status === 404) return null;
+      if (r.status !== 200 || !r.json) throw NetErr('busy');
+      var f = fromFields(r.json.fields);
+      return {
+        updateTime: r.json.updateTime,
+        vr: isNum(f.vr) ? Math.round(f.vr) : null,
+        gsp: numMap(f.gsp), tt: f.tt && typeof f.tt === 'object' ? f.tt : {}, friends: f.friends && typeof f.friends === 'object' ? f.friends : {},
+        codes: Array.isArray(f.codes) ? f.codes : [],
+        cids: Array.isArray(f.cids) ? f.cids : []
+      };
+    }
+
+    function numMap(o) { // whole-number entries only: a stray null/string/fraction must not wedge the increments
+      var r = {};
+      if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { if (isNum(o[k])) r[k] = Math.round(o[k]); });
+      return r;
+    }
+    function cleanD(d) { d = d || {}; return { vr: isNum(d.vr) ? Math.round(d.vr) : 0, gsp: numMap(d.gsp) }; }
+
+    function mergeAll(cloud, local, s) {
+      var mtt = CORE.mergeTT(cloud.tt, local.tt);
+      var mf = CORE.mergeFriends(cloud.friends, local.friends, { dev: s.dev, known: s.known || [], recOthers: s.recOthers || {} }, now());
+      var codes = cloud.codes.slice();
+      if (local.me && local.me.c != null && codes.indexOf(local.me.c) < 0) codes.push(local.me.c);
+      return { mtt: mtt, mf: mf, codes: codes };
+    }
+
+    var curBusy = null;
+
+    // Get one logical change (pend = {id, d}) applied exactly once.
+    // "Applied" is decided by the save doc itself: `cids` holds the last 20 applied change ids and is
+    // written in the same atomic, precondition-guarded write as the increments.
+    // Returns {cloud, mtt, mf, committed|noop|applied}.
+    async function commitPend(pend, tok) {
+      var s = session();
+      for (var attempt = 0; attempt < 3; attempt++) {
+        var cloud = await readSave(s.uid, tok);
+        var exists = !!cloud;
+        if (!cloud) cloud = { vr: null, gsp: {}, tt: {}, friends: {}, codes: [], cids: [] };
+        var m = mergeAll(cloud, CORE.readLocal(ls), s);
+        var d = cleanD(pend.d);
+        var cvr = cloud.vr == null ? VR_DEF : cloud.vr;
+
+        if (cloud.cids.indexOf(pend.id) >= 0) { // already applied (lost reply): never apply twice
+          return {
+            cloud: { vr: cvr, gsp: cloud.gsp, tt: m.mtt, friends: m.mf.cloud, codes: m.codes },
+            mtt: m.mtt, mf: m.mf, applied: true
+          };
+        }
+
+        // floors are folded into the same increments; a missing cloud field starts from its default
+        var after = { vr: cvr + d.vr, gsp: {} };
+        Object.keys(cloud.gsp).forEach(function (id) { after.gsp[id] = cloud.gsp[id] + (d.gsp[id] || 0); });
+        Object.keys(d.gsp).forEach(function (id) { if (!(id in cloud.gsp)) after.gsp[id] = PW_DEF + d.gsp[id]; });
+        var fl = CORE.floorFix(after);
+        var incVr = d.vr + fl.vr + (cloud.vr == null ? VR_DEF : 0);
+        var incG = {}, totG = {};
+        Object.keys(after.gsp).forEach(function (id) {
+          var step = (d.gsp[id] || 0) + (fl.gsp[id] || 0);
+          totG[id] = after.gsp[id] + (fl.gsp[id] || 0);
+          if (id in d.gsp || step !== 0) incG[id] = step + (id in cloud.gsp ? 0 : PW_DEF);
+        });
+        var result = { cloud: { vr: after.vr + fl.vr, gsp: totG, tt: m.mtt, friends: m.mf.cloud, codes: m.codes }, mtt: m.mtt, mf: m.mf };
+
+        if (exists && incVr === 0 && !hasKeys(incG) &&
+          stable(m.mtt) === stable(cloud.tt) && stable(m.mf.cloud) === stable(cloud.friends) && stable(m.codes) === stable(cloud.codes)) {
+          result.noop = true;
+          return result;
+        }
+
+        if (curBusy && curBusy()) throw NetErr('skipped'); // never mid-match; pend (if any) resumes later
+
+        // persist BEFORE sending: a lost reply must be retried with this same id
+        var sp = session();
+        if (!sp || sp.uid !== s.uid) throw NetErr('skipped'); // logged out meanwhile
+        if (!sp.pend || sp.pend.id !== pend.id) putSession({ pend: pend }, s.uid);
+
+        var transforms = [];
+        if (incVr !== 0 || !exists) transforms.push({ fieldPath: 'vr', increment: { integerValue: String(incVr) } });
+        Object.keys(incG).forEach(function (id) { transforms.push({ fieldPath: fp('gsp', id), increment: { integerValue: String(incG[id]) } }); });
+        var cids = cloud.cids.concat([pend.id]).slice(-20);
+        var w1 = {
+          update: { name: docRoot + '/users/' + s.uid + '/save/main', fields: toFields({ tt: m.mtt, friends: m.mf.cloud, codes: m.codes, cids: cids }) },
+          updateMask: { fieldPaths: ['tt', 'friends', 'codes', 'cids'] },
+          updateTransforms: transforms,
+          currentDocument: exists ? { updateTime: cloud.updateTime } : { exists: false }
+        };
+        var r = await http(fsBase + ':commit', { method: 'POST', headers: authH(tok), body: JSON.stringify({ writes: [w1] }) });
+        if (r.status === 200) { result.committed = true; return result; }
+        if (r.status === 400 && !isConflict(r)) { // the write itself is invalid: retrying this same change can never succeed
+          try { console.warn('pixel-accounts: dropping a change the server rejected', r.json && r.json.error && r.json.error.status); } catch (e) { }
+          putSession({ pend: undefined }, s.uid); // base untouched, so the next sync recomputes the change from scratch
+          throw NetErr('bad');
+        }
+        if (!isConflict(r)) throw NetErr('busy');
+        // precondition failed: someone else wrote first -> re-read, re-merge, retry with the same id
+      }
+      throw NetErr('busy');
+    }
+
+    function addBase(base, d) {
+      d = cleanD(d);
+      var b = { vr: (isNum(base.vr) ? base.vr : VR_DEF) + d.vr, gsp: cl(base.gsp || {}) };
+      Object.keys(d.gsp).forEach(function (id) { b.gsp[id] = (isNum(b.gsp[id]) ? b.gsp[id] : PW_DEF) + d.gsp[id]; });
+      return b;
+    }
+
+    var mainFn = null;
+    function setMain(fn) { mainFn = fn; }
+    function clampI(v, lo, hi) { return Math.min(hi, Math.max(lo, Math.round(v))); }
+    // value ranges match firestore.rules: vr 1..99999, pw 100000..1e9, main string <= 16 chars, ls int
+    async function pushProfile(uid, tok, cloud) {
+      var pw = 0;
+      Object.keys(cloud.gsp).forEach(function (id) { if (isNum(cloud.gsp[id]) && cloud.gsp[id] > pw) pw = cloud.gsp[id]; });
+      var f = { vr: clampI(isNum(cloud.vr) ? cloud.vr : VR_DEF, 1, 99999), ls: Math.round(now()) };
+      if (pw) f.pw = clampI(pw, 100000, 1e9);
+      var mn = null;
+      try { mn = mainFn ? mainFn() : null; } catch (e) { }
+      if (typeof mn === 'string' && mn) f.main = mn.slice(0, 16);
+      var q = Object.keys(f).map(function (k) { return 'updateMask.fieldPaths=' + k; }).join('&');
+      try {
+        await http(fsBase + '/profiles/' + uid + '?' + q + '&currentDocument.exists=true',
+          { method: 'PATCH', headers: authH(tok), body: JSON.stringify({ fields: toFields(f) }) });
+      } catch (e) { }
+    }
+
+    // Values to store locally after a sync = cloud totals + whatever the player changed while the sync was in flight.
+    function rebase(snap, cur, res, s) {
+      var cloud = res.cloud, changed = false, i;
+      var vr = cloud.vr;
+      if (isNum(cur.vr)) {
+        var dv = cur.vr - (isNum(snap.vr) ? snap.vr : VR_DEF);
+        if (dv) { vr += dv; changed = true; }
+      }
+      var gsp = Object.assign({}, snap.gsp, cloud.gsp);
+      var ids = Object.keys(Object.assign({}, snap.gsp, cur.gsp));
+      for (i = 0; i < ids.length; i++) {
+        var id = ids[i];
+        var sv = isNum(snap.gsp[id]) ? snap.gsp[id] : PW_DEF, nv = isNum(cur.gsp[id]) ? cur.gsp[id] : PW_DEF;
+        if (nv !== sv) { gsp[id] = (id in cloud.gsp ? cloud.gsp[id] : PW_DEF) + nv - sv; changed = true; }
+      }
+      var tt = CORE.mergeTT(res.mtt, cur.tt);
+      if (stable(tt) !== stable(res.mtt)) changed = true;
+      var friends = res.mf.list, known = res.mf.known, recOthers = res.mf.recOthers;
+      if (stable(cur.friends) !== stable(snap.friends)) {
+        changed = true;
+        // removal detection uses LOCAL-side knowledge only: friends that arrived from the cloud in this sync are not "known"
+        var lk = (s.known || []).slice();
+        (snap.friends || []).forEach(function (f) { if (f && f.c != null && lk.indexOf(f.c) < 0) lk.push(f.c); });
+        var rf = CORE.mergeFriends(res.mf.cloud, cur.friends, { dev: s.dev, known: lk, recOthers: res.mf.recOthers }, now());
+        friends = rf.list;
+        known = rf.known.concat(lk.filter(function (c) { return rf.known.indexOf(c) < 0; })); // keep local removals detectable next sync
+        recOthers = Object.assign({}, res.mf.recOthers, rf.recOthers);
+      }
+      return { vr: vr, gsp: gsp, tt: tt, friends: friends, known: known, recOthers: recOthers, changed: changed };
+    }
+
+    var inflight = null, again = false, lastOpts = null;
+    async function syncInner() {
+      var opts = lastOpts;
+      curBusy = opts && opts.busy;
+      if (curBusy && curBusy()) return 'skipped';
+      var s = session();
+      if (!s || !s.uid) return 'skipped';
+      var anyCommit = false, lastCloud = null, uidTok = null;
+      try {
+        var tok = await idToken();
+        if (!tok) return session() ? 'offline' : 'skipped';
+        uidTok = { uid: s.uid, tok: tok };
+        s = session();
+        if (!s || s.uid !== uidTok.uid) return 'skipped';
+        anyCommit = false; lastCloud = null;
+        if (s.pend) { // settle an earlier unconfirmed change first, with its original id
+          var lastRes = await commitPend(s.pend, tok);
+          if (lastRes.committed || lastRes.applied) { anyCommit = true; lastCloud = lastRes.cloud; }
+          s = session();
+          if (!s || s.uid !== uidTok.uid) return 'skipped';
+          if (s.pend) putSession({ base: addBase(s.base || {}, s.pend.d), pend: undefined }, uidTok.uid);
+        }
+        s = session();
+        if (!s || s.uid !== uidTok.uid) return 'skipped';
+        var snap = CORE.readLocal(ls);
+        var pend = { id: randStr(20), d: CORE.deltas(snap, s.base || {}) };
+        var res = await commitPend(pend, tok);
+        if (res.committed || res.applied) { anyCommit = true; lastCloud = res.cloud; }
+        var sn = session();
+        if (!sn || sn.uid !== uidTok.uid) return 'skipped'; // logged out mid-sync: leave this device's values alone
+        var cur = CORE.readLocal(ls);
+        var rb = rebase(snap, cur, res, s);
+        CORE.writeLocal(ls, { vr: rb.vr, gsp: rb.gsp, tt: rb.tt, friends: rb.friends });
+        putSession({ base: { vr: res.cloud.vr, gsp: cl(res.cloud.gsp) }, known: rb.known, recOthers: rb.recOthers, ut: now(), pend: undefined }, uidTok.uid);
+        if (rb.changed) again = true; // player moved while we were syncing: upload the leftover next
+        if (anyCommit) await pushProfile(s.uid, tok, res.cloud);
+        return 'ok';
+      } catch (e) {
+        if (anyCommit && lastCloud && uidTok) await pushProfile(uidTok.uid, uidTok.tok, lastCloud);
+        if (e && e.pxa === 'offline') return 'offline';
+        if (e && (e.pxa === 'busy' || e.pxa === 'bad')) return 'busy';
+        if (e && e.pxa === 'skipped') return 'skipped';
+        throw e;
+      }
+    }
+    function sync(opts) {
+      lastOpts = opts || lastOpts;
+      if (inflight) { again = true; return inflight; }
+      inflight = (async function () {
+        var r, n = 0;
+        try {
+          do { again = false; n++; r = await withLock(syncInner); } while (again && r === 'ok' && n < 4);
+        } finally { inflight = null; }
+        return r;
+      })();
+      return inflight;
+    }
+
+    // New session for the same account (password change / log out others), keeping this device's bookkeeping.
+    // Under the lock: a sync (this tab or another) can't write its old base onto the new session.
+    function resign(token, keep) {
+      return withLock(async function () {
+        var s = session() || {}, extra = {};
+        (keep || []).forEach(function (k) { if (s[k] !== undefined) extra[k] = s[k]; });
+        logoutLocal();
+        await signIn(token, extra);
+      });
+    }
+
+    // ---- scheduling ----
+    var busyFn = null, timer = null, lastAt = 0;
+    var setT = deps.setTimeout || (G.setTimeout && G.setTimeout.bind(G));
+    var clearT = deps.clearTimeout || (G.clearTimeout && G.clearTimeout.bind(G));
+    function setBusy(fn) { busyFn = fn; }
+    function run() {
+      timer = null;
+      lastAt = now();
+      return sync({ busy: busyFn }).then(function (r) {
+        if (!setT || timer) return r;
+        if (r === 'skipped' && busyFn && busyFn()) timer = setT(run, 5000);
+        else if (r === 'offline' || r === 'busy') timer = setT(run, 60000);
+        return r;
+      }, function () { });
+    }
+    function scheduleSync(reason) {
+      if (!session()) return;
+      if (reason === 'result' || reason === 'friend' || reason === 'login') {
+        if (timer && clearT) { clearT(timer); timer = null; }
+        return run();
+      }
+      if (timer || !setT) return;
+      timer = setT(run, Math.max(0, lastAt + 60000 - now()));
+    }
+
+    return {
+      worker: worker, signIn: signIn, idToken: idToken, logoutLocal: logoutLocal, getPublic: getPublic,
+      sync: sync, scheduleSync: scheduleSync, setBusy: setBusy, setMain: setMain,
+      session: session, putSession: putSession, devId: devId, withLock: withLock, resign: resign
+    };
+  }
+
+  if (typeof module === 'object' && module.exports) module.exports = PXA_NET; else G.PXA_NET = PXA_NET;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+(function (G) {
+  'use strict';
+  // Panel engine for the account screens. Same look, keyboard and gamepad handling as the friends panel (#px-fr).
+  // A screen is a plain object:
+  //   {id, title, lines:[{t, c?}], fields:[{id, label, type?, val?, ph?, auto?, max?}], tabs:[{k, label, on}],
+  //    buttons:[{k, label, cls?}], links:[{k, label}], enter?:k, esc?:k, focus?:fieldId}
+  // c: 'm' muted, 'code' big recovery code, 'er' error, 'ok' good.  Every click/Enter/Escape calls act(k, values).
+
+  var CSS = '#px-acct-bd{position:fixed;left:0;top:0;right:0;bottom:0;z-index:69;background:rgba(5,7,12,.72)}' +
+    '#px-acct{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;z-index:70;background:#121a2c;color:#e9efd8;border:2px solid #ecc45a;box-shadow:4px 4px 0 #05070c;padding:12px 14px;font:12px/1.45 ui-monospace,Consolas,monospace;box-sizing:border-box;-webkit-user-select:text;user-select:text}' +
+    '#px-acct h2{margin:0 0 6px;font-size:15px;color:#fff5c8}#px-acct .s{color:#ecc45a;font-weight:bold;margin:10px 0 3px;text-transform:uppercase;font-size:11px;letter-spacing:1px}#px-acct .m{color:#9aa8bc;margin:4px 0}' +
+    '#px-acct button{font:inherit;cursor:pointer;padding:5px 10px;margin:4px 6px 0 0;border:2px solid #05070c;background:#2c3a58;color:#e9efd8}#px-acct button.g{background:#ecc45a;color:#121a2c}#px-acct button.j{background:#58e070;color:#0b1a10}#px-acct button.d{background:#8a2f24;color:#fff}' +
+    '#px-acct button.t{background:#1c2740;border-color:#3a4a6c}#px-acct button.t.on{background:#ecc45a;color:#121a2c;border-color:#05070c}' +
+    '#px-acct button.l{background:none;border:0;padding:2px 0;margin:6px 10px 0 0;color:#4aa8ff;text-decoration:underline}#px-acct button:focus{outline:2px solid #fff;outline-offset:1px}' +
+    '#px-acct label{display:block;color:#9aa8bc;margin-top:8px}#px-acct input{font:inherit;font-size:14px;width:100%;box-sizing:border-box;padding:6px;background:#1c2740;color:#fff5c8;border:1px solid #3a4a6c;margin-top:3px}' +
+    '#px-acct .code{font-size:26px;letter-spacing:3px;color:#fff5c8;font-weight:bold;text-align:center;margin:12px 0;padding:10px 4px;background:#1c2740;border:2px dashed #ecc45a;-webkit-user-select:all;user-select:all}' +
+    '#px-acct .ok{color:#58e070}#px-acct .er{color:#ff8a72}#px-acct #px-acct-msg{margin-top:8px;min-height:1em}' +
+    '#px-acct .btns{margin-top:10px}';
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function PXA_UI(act) {
+    var el = null, bd = null, cur = null, padRaf = 0;
+    var PS = { d: '', t: 0, b: {} };
+
+    function mount() {
+      if (el) return;
+      var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+      bd = document.createElement('div'); bd.id = 'px-acct-bd'; bd.hidden = true;
+      bd.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+      bd.addEventListener('click', function (e) { e.stopPropagation(); });
+      el = document.createElement('div'); el.id = 'px-acct'; el.hidden = true;
+      el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Account');
+      el.addEventListener('keydown', function (e) {
+        e.stopPropagation();
+        if (!cur) return;
+        if (e.key === 'Escape') { if (cur.esc) { e.preventDefault(); fire(cur.esc); } }
+        else if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT' && cur.enter) { e.preventDefault(); fire(cur.enter); }
+      });
+      el.addEventListener('keyup', function (e) { e.stopPropagation(); });
+      el.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var b = e.target.closest && e.target.closest('button');
+        if (b && b.dataset.k) fire(b.dataset.k);
+      });
+      document.body.appendChild(bd); document.body.appendChild(el);
+    }
+
+    function vals() {
+      var o = {};
+      if (!el) return o;
+      var ins = el.querySelectorAll('input[data-f]');
+      for (var i = 0; i < ins.length; i++) o[ins[i].dataset.f] = ins[i].value;
+      return o;
+    }
+    function fire(k) { if (act) act(k, vals(), cur && cur.id); }
+
+    function draw(keep) {
+      var s = cur, h = '<h2>' + esc(s.title) + '</h2>';
+      if (s.tabs) {
+        h += '<div>';
+        s.tabs.forEach(function (t) { h += '<button data-k="' + esc(t.k) + '" class="t' + (t.on ? ' on' : '') + '">' + esc(t.label) + '</button>'; });
+        h += '</div>';
+      }
+      (s.lines || []).forEach(function (l) {
+        h += '<div class="' + (l.c || '') + '">' + esc(l.t) + '</div>';
+      });
+      (s.fields || []).forEach(function (f) {
+        var v = keep && keep[f.id] != null ? keep[f.id] : (f.val || '');
+        h += '<label>' + esc(f.label) + '<input data-f="' + esc(f.id) + '" type="' + esc(f.type || 'text') + '" value="' + esc(v) + '" placeholder="' + esc(f.ph || '') +
+          '" autocomplete="' + esc(f.auto || 'off') + '" autocapitalize="off" autocorrect="off" spellcheck="false"' + (f.max ? ' maxlength="' + f.max + '"' : '') + '></label>';
+      });
+      h += '<div id="px-acct-msg"></div>';
+      if (s.buttons && s.buttons.length) {
+        h += '<div class="btns">';
+        s.buttons.forEach(function (b) { h += '<button data-k="' + esc(b.k) + '"' + (b.cls ? ' class="' + b.cls + '"' : '') + '>' + esc(b.label) + '</button>'; });
+        h += '</div>';
+      }
+      if (s.links && s.links.length) {
+        h += '<div>';
+        s.links.forEach(function (b) { h += '<button data-k="' + esc(b.k) + '" class="l">' + esc(b.label) + '</button>'; });
+        h += '</div>';
+      }
+      el.innerHTML = h;
+      if (s.msg) say(s.msg.t, s.msg.bad);
+      var f = s.focus && el.querySelector('input[data-f="' + s.focus + '"]');
+      if (!f) f = el.querySelector('input') || el.querySelector('button');
+      if (f) f.focus({ preventScroll: true });
+      el.scrollTop = 0;
+    }
+
+    function say(t, bad) {
+      var m = el && el.querySelector('#px-acct-msg');
+      if (!m) return;
+      m.className = bad ? 'er' : 'ok';
+      m.textContent = t || '';
+    }
+
+    function show(spec, keep) {
+      mount();
+      cur = spec;
+      bd.hidden = false; el.hidden = false;
+      draw(keep);
+      if (!padRaf) padRaf = requestAnimationFrame(tick);
+    }
+    function close() {
+      if (!el || el.hidden) return;
+      el.hidden = true; bd.hidden = true; cur = null;
+      cancelAnimationFrame(padRaf); padRaf = 0;
+    }
+    function isOpen() { return !!(el && !el.hidden); }
+    function screenId() { return cur && cur.id; }
+
+    // a gamepad can drive the panel: up/down move between buttons and fields, A presses, B = Escape action
+    function tick() {
+      if (!isOpen()) { padRaf = 0; return; }
+      pad();
+      padRaf = requestAnimationFrame(tick);
+    }
+    function pad() {
+      var g = null;
+      try { var gp = navigator.getGamepads ? navigator.getGamepads() : []; for (var i = 0; i < gp.length; i++) { var q = gp[i]; if (q && q.connected) { g = q; break; } } } catch (e) { }
+      if (!g) return;
+      var b = function (i) { return !!(g.buttons[i] && g.buttons[i].pressed); }, ay = g.axes[1] || 0, ax = g.axes[0] || 0;
+      var d = b(12) || ay < -.5 ? 'u' : b(13) || ay > .5 ? 'd' : b(14) || ax < -.5 ? 'u' : b(15) || ax > .5 ? 'd' : '';
+      var now = performance.now();
+      if (d && (d !== PS.d || now - PS.t > 220)) {
+        var L3 = Array.prototype.slice.call(el.querySelectorAll('button,input')), i2 = L3.indexOf(document.activeElement);
+        var n = L3[(i2 + (d === 'u' ? -1 : 1) + L3.length) % L3.length];
+        if (n) { n.focus(); n.scrollIntoView({ block: 'nearest' }); }
+        PS.t = now + (d !== PS.d ? 200 : 0);
+      }
+      PS.d = d;
+      var pr = function (i) { var was = PS.b[i]; PS.b[i] = b(i); return b(i) && !was; };
+      if (pr(0)) { var a = document.activeElement; if (a && a.tagName === 'BUTTON') a.click(); }
+      if (pr(1) && cur && cur.esc) fire(cur.esc);
+    }
+
+    return { show: show, close: close, isOpen: isOpen, say: say, vals: vals, screenId: screenId };
+  }
+
+  // ---- screens (copy lives here; main.js decides what the buttons do) ----
+  var BUSY = 'Accounts are busy, try again later';
+  var S = {
+    BUSY: BUSY,
+    welcome: function (o) {
+      o = o || {};
+      return {
+        id: 'welcome', title: 'Pixel account', focus: null,
+        lines: [{ t: 'Save your progress and keep your name on any device. It is free, and you can still play without one.', c: 'm' }],
+        buttons: [{ k: 'create', label: 'Create account', cls: 'g' }, { k: 'login', label: 'I already have an account' }, { k: 'guest', label: 'Play as guest', cls: 'j' }].concat(o.closable ? [{ k: 'close', label: 'Close' }] : []),
+        esc: o.closable ? 'close' : null, msg: o.msg
+      };
+    },
+    create: function (o) {
+      o = o || {};
+      return {
+        id: 'create', title: 'Create account', enter: 'submit', esc: 'back', focus: 'u',
+        fields: [
+          { id: 'u', label: 'Username (3-12 letters, numbers, _ . -)', val: o.name || '', max: 12, auto: 'username' },
+          { id: 'p', label: 'Password (at least 6 characters)', type: 'password', auto: 'new-password', max: 128 },
+          { id: 'p2', label: 'Password again', type: 'password', auto: 'new-password', max: 128 },
+          { id: 'e', label: 'Email (optional)', type: 'email', auto: 'email', max: 254 }
+        ],
+        lines: [{ t: "Without an email or your recovery code, a forgotten password can't be recovered.", c: 'm' }],
+        buttons: [{ k: 'submit', label: 'Create account', cls: 'g' }, { k: 'back', label: 'Back' }], msg: o.msg
+      };
+    },
+    recovery: function (o) {
+      return {
+        id: 'recovery', title: 'Your recovery code', enter: 'saved', esc: null,
+        lines: [{ t: o.code, c: 'code' }, { t: "Write this down or take a screenshot. It's the only way back in if you forget your password and have no email.", c: 'm' }].concat(o.extra ? [{ t: o.extra, c: 'm' }] : []),
+        buttons: [{ k: 'saved', label: 'I saved it', cls: 'g' }]
+      };
+    },
+    login: function (o) {
+      o = o || {};
+      return {
+        id: 'login', title: 'Log in', enter: 'submit', esc: 'back', focus: 'u',
+        fields: [{ id: 'u', label: 'Username', val: o.name || '', max: 12, auto: 'username' }, { id: 'p', label: 'Password', type: 'password', auto: 'current-password', max: 128 }],
+        buttons: [{ k: 'submit', label: 'Log in', cls: 'g' }, { k: 'back', label: 'Back' }].concat(o.busy ? [{ k: 'guest', label: 'Play as guest', cls: 'j' }] : []),
+        links: [{ k: 'forgot', label: 'Forgot password?' }], msg: o.msg
+      };
+    },
+    forgot: function (o) {
+      o = o || {};
+      var tab = o.tab === 'email' ? 'email' : 'code';
+      var s = {
+        id: 'forgot', title: 'Forgot password', esc: 'back', focus: 'u',
+        tabs: [{ k: 'tab-code', label: 'Recovery code', on: tab === 'code' }, { k: 'tab-email', label: 'Email', on: tab === 'email' }],
+        lines: [{ t: 'Logged in on another device? Change your password there in Settings → Account.', c: 'm' }], msg: o.msg
+      };
+      if (tab === 'code') {
+        s.enter = 'recover';
+        s.fields = [{ id: 'u', label: 'Username', val: o.name || '', max: 12, auto: 'username' }, { id: 'c', label: 'Recovery code', ph: 'XXXX-XXXX-XXXX', max: 20 }, { id: 'p', label: 'New password', type: 'password', auto: 'new-password', max: 128 }];
+        s.buttons = [{ k: 'recover', label: 'Log in with code', cls: 'g' }, { k: 'back', label: 'Back' }];
+      } else {
+        s.enter = 'reset';
+        s.fields = [{ id: 'u', label: 'Username', val: o.name || '', max: 12, auto: 'username' }];
+        s.buttons = [{ k: 'reset', label: 'Send reset link', cls: 'g' }, { k: 'back', label: 'Back' }];
+      }
+      return s;
+    },
+    account: function (o) {
+      var em = o.email === 'none' ? 'none' : o.email === 'unverified' ? 'not verified' : o.email;
+      return {
+        id: 'account', title: 'Account', esc: 'close', focus: null,
+        lines: [{ t: o.name, c: 'code' }, { t: 'Email: ' + em, c: 'm' }, { t: 'Friend code: ' + (o.code || 'none yet'), c: 'm' }],
+        buttons: [
+          { k: 'pw', label: 'Change password' },
+          { k: 'email', label: o.email === 'none' ? 'Add email' : 'Change email' }
+        ].concat(o.email !== 'none' ? [{ k: 'email-rm', label: 'Remove email' }] : []).concat([
+          { k: 'newcode', label: 'New recovery code' },
+          { k: 'rename', label: 'Change username' },
+          { k: 'others', label: 'Log out all other devices' },
+          { k: 'logout', label: 'Log out', cls: 'g' },
+          { k: 'delete', label: 'Delete my account', cls: 'd' },
+          { k: 'close', label: 'Close' }
+        ]),
+        msg: o.msg
+      };
+    },
+    form: function (o) { // small one-off form: o = {id, title, fields, lines, submit, cancel}
+      return {
+        id: o.id, title: o.title, enter: 'submit', esc: 'cancel', focus: o.fields && o.fields[0] && o.fields[0].id,
+        fields: o.fields, lines: o.lines || [],
+        buttons: [{ k: 'submit', label: o.submit || 'OK', cls: 'g' }, { k: 'cancel', label: 'Cancel' }], msg: o.msg
+      };
+    },
+    confirm: function (o) { // o = {id, title, lines, yes, danger}
+      return {
+        id: o.id, title: o.title, esc: 'cancel', lines: o.lines || [],
+        buttons: [{ k: 'yes', label: o.yes || 'Yes', cls: o.danger ? 'd' : 'g' }, { k: 'cancel', label: 'Cancel' }], msg: o.msg
+      };
+    },
+    info: function (o) { // o = {id, title, lines, ok}
+      return { id: o.id, title: o.title, esc: 'ok', enter: 'ok', lines: o.lines || [], buttons: [{ k: 'ok', label: o.ok || 'OK', cls: 'g' }] };
+    }
+  };
+  PXA_UI.screens = S;
+
+  if (typeof module === 'object' && module.exports) module.exports = PXA_UI; else G.PXA_UI = PXA_UI;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+(function (G) {
+  'use strict';
+  // Global PXA: glue between the account screens (PXA_UI), the network layer (PXA_NET) and the two games.
+  // Without a config (or with window.PXACCT_OFF) every method is a safe no-op and nothing is shown.
+  var CORE = G.PXA_CORE, NETF = G.PXA_NET, UIF = G.PXA_UI;
+  var cfg = (typeof PXA_CFG !== 'undefined' && PXA_CFG) || {};
+  var on = !!(cfg.apiKey && cfg.projectId && cfg.worker) && !(typeof window !== 'undefined' && window.PXACCT_OFF);
+
+  if (!on) {
+    G.PXA = {
+      on: false, init: function () { }, boot: function () { }, isOpen: function () { return false; }, openAccount: function () { },
+      result: function () { }, friendChanged: function () { }, user: function () { return null; },
+      profiles: function () { return Promise.resolve({}); }, byName: function () { return Promise.resolve(null); }
+    };
+    return;
+  }
+
+  var S = UIF.screens, BUSY = S.BUSY;
+  var ls = G.localStorage;
+  var NOP = function () { };
+  var H = { game: 's', flush: NOP, reload: function () { try { G.location.reload(); } catch (e) { } }, setName: NOP, busy: function () { return false; }, beep: NOP, getName: null };
+  var net = NETF(cfg, {});
+  var ui = null, lock = false, flow = { wc: false, rcBack: false, tab: 'code', relogin: false };
+
+  // ---- small storage helpers (every access guarded: private windows can throw) ----
+  function lget(k) { try { return ls.getItem(k); } catch (e) { return null; } }
+  function lset(k, v) { try { ls.setItem(k, v); } catch (e) { } }
+  function lrm(k) { try { ls.removeItem(k); } catch (e) { } }
+  function jget(k) { try { var o = JSON.parse(lget(k) || 'null'); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } }
+  function jset(k, o) { lset(k, JSON.stringify(o)); }
+
+  var NAME_RE = /^[A-Za-z0-9_.\-]{3,12}$/;
+  function savedName() { // the online name this device already uses (either game), or ''
+    var n = '', o;
+    try { if (H.getName) n = H.getName() || ''; } catch (e) { }
+    if (!n) { o = jget('psk_onl'); n = o && o.name || ''; }
+    if (!n) { o = jget('pixelsmash.settings'); n = o && o.onlName || ''; }
+    if (!n) { o = jget('psk_smash'); n = o && o.onlName || ''; }
+    return NAME_RE.test(n) ? n : '';
+  }
+  function accountName() { var n = savedName(); return CORE.normName(n) ? n : ''; } // a guest-looking name is not a username suggestion
+
+  function fr() { return typeof FR !== 'undefined' ? FR : null; }
+  function myCode(name) { // the friend code that moves into the new account: this device's own, or a fresh one
+    var F = fr(), me = F && F.me && F.me();
+    if (me && me.c) return me.c;
+    if (F && F.makeCode) { try { return F.makeCode(name, Date.now()); } catch (e) { } }
+    return '';
+  }
+
+  // ---- messages ----
+  function errMsg(e) {
+    switch (e) {
+      case 'busy': return BUSY;
+      case 'bad_name': return "That username isn't allowed. Use 3-12 letters, numbers, _ . or -, and don't start it with guest.";
+      case 'name_taken': return 'That username is taken.';
+      case 'bad_password': return 'Password must be at least 6 characters.';
+      case 'login_failed': return 'Wrong username or password.';
+      case 'bad_code': return "That username or recovery code didn't work.";
+      case 'locked': return 'Too many wrong codes. Try again in an hour.';
+      case 'too_soon': return 'You can change your username once every 30 days.';
+      case 'bad_token': return 'This device was logged out. Log in again.';
+      default: return BUSY;
+    }
+  }
+  function say(t, bad) { if (ui) ui.say(t, bad); try { if (H.beep) H.beep(!bad); } catch (e) { } }
+  // account-screen failure: a dead token signs this device out (local progress kept for a same-account re-login)
+  function fail(e) {
+    if (e !== 'bad_token') return say(errMsg(e), true);
+    var s = net.session();
+    net.logoutLocal();
+    flow.wc = true;
+    showLogin({ name: (s && s.name) || accountName(), msg: { t: errMsg(e), bad: true } });
+    try { if (H.beep) H.beep(false); } catch (x) { }
+  }
+
+  // ---- Firebase REST bits the Worker does not cover ----
+  var emu = cfg.emu || null;
+  function authUrl(op) {
+    return (emu ? 'http://' + emu.auth + '/identitytoolkit.googleapis.com' : 'https://identitytoolkit.googleapis.com') + '/v1/accounts:' + op + '?key=' + encodeURIComponent(cfg.apiKey);
+  }
+  async function authPost(op, body) {
+    try {
+      var r = await G.fetch(authUrl(op), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      var j = null; try { j = await r.json(); } catch (e) { }
+      return { ok: r.ok, json: j };
+    } catch (e) { return { ok: false, json: null }; }
+  }
+  async function sendVerify(email) { // "verify and change": the real email only takes over once the link is clicked
+    var idt = await net.idToken();
+    if (!idt) return false;
+    var r = await authPost('sendOobCode', { requestType: 'VERIFY_AND_CHANGE_EMAIL', idToken: idt, newEmail: email });
+    if (r.ok) net.putSession({ pe: email });
+    return r.ok;
+  }
+  async function emailState() { // 'none' | 'unverified' | the address
+    var s = net.session(), pend = s && s.pe ? 'unverified' : 'none';
+    var idt = await net.idToken();
+    if (!idt) return pend;
+    var r = await authPost('lookup', { idToken: idt });
+    var u = r.ok && r.json && r.json.users && r.json.users[0];
+    if (!u) return pend;
+    var em = u.email || '';
+    if (!em || /@users\.pixel\.invalid$/i.test(em)) return pend;
+    if (s && s.pe) net.putSession({ pe: undefined });
+    return em;
+  }
+
+  // ---- identity on this device ----
+  function applyIdentity(name, code) { // friend card + game name follow the account
+    var me = jget('pixel.me');
+    if (code) jset('pixel.me', { n: name, t: me && me.c === code && me.t || Date.now(), c: code });
+    else if (me) { me.n = name; jset('pixel.me', me); }
+    H.setName(name);
+  }
+  function wipeLocal() { // spec 5.6: log out / delete leaves a fresh guest on the device
+    var i, k, kill = [];
+    for (i = 0; i < ls.length; i++) { k = ls.key(i); if (k && k.indexOf('psk_tt_') === 0) kill.push(k); }
+    kill.forEach(lrm);
+    CORE.writeLocal(ls, { vr: CORE.VR_DEF, gsp: {} });
+    lrm('pixel.friends'); lrm('pixel.me'); lrm('pixel.welcomed'); lrm('pixel.acct.pc');
+  }
+  async function doLogout() {
+    await net.withLock(async function () { // never while a sync (any tab) is writing the session
+      net.logoutLocal({ voluntary: true });
+      H.setName(CORE.guestName()); // before the wipe: the game may save its own state while renaming
+      wipeLocal();
+    });
+    H.reload();
+    showWelcome(false); // spec 5.6: straight back to the welcome screen (also when the host does not reload)
+  }
+  function timeout(ms) { return new Promise(function (res) { setTimeout(function () { res('timeout'); }, ms); }); }
+  async function finish() { // merge with the cloud save, then restart the game on the merged values
+    try { await Promise.race([net.sync({ busy: H.busy }), timeout(8000)]); } catch (e) { }
+    ui.close();
+    H.reload();
+  }
+  function resign(token) { // new session after a password change; keeps this device's sync bookkeeping (locked in net)
+    return net.resign(token, ['name', 'code', 'pe']);
+  }
+  async function signedIn(token, name, code, extra) { // login, recovery, signup
+    H.flush();
+    var ex = Object.assign({ name: name, code: code || null }, extra || {});
+    await net.signIn(token, ex);
+    applyIdentity(name, code);
+    lset('pixel.welcomed', '1');
+  }
+
+  // ---- screens ----
+  function showWelcome(closable, msg) { flow.wc = !!closable; ui.show(S.welcome({ closable: closable, msg: msg })); }
+  function showCreate(msg, keep) { ui.show(S.create({ name: accountName(), msg: msg }), keep); }
+  function showLogin(o, keep) { ui.show(S.login(o), keep); }
+  function showForgot(tab, name, msg) { flow.tab = tab; ui.show(S.forgot({ tab: tab, name: name, msg: msg })); }
+  async function showAccount(msg) {
+    var s = net.session();
+    if (!s) return showWelcome(true);
+    var o = { name: s.name || '', code: (s.code || (jget('pixel.me') || {}).c || ''), email: s.pe ? 'unverified' : 'none', msg: msg };
+    ui.show(S.account(o));
+    var em = await emailState();
+    if (em !== o.email && ui.isOpen() && ui.screenId() === 'account') { o.email = em; ui.show(S.account(o)); }
+  }
+  function form(id, title, fields, submit, lines) { ui.show(S.form({ id: id, title: title, fields: fields, submit: submit, lines: lines })); }
+
+  function maxPw(g) { var m = 0; Object.keys(g || {}).forEach(function (k) { if (g[k] > m) m = g[k]; }); return m || undefined; }
+  var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+  async function handle(k, v, id) {
+    var r, name, s, idt;
+    if (id === 'welcome') {
+      if (k === 'create') return showCreate();
+      if (k === 'login') return showLogin({ name: accountName() });
+      if (k === 'guest') { if (!savedName()) H.setName(CORE.guestName()); lset('pixel.welcomed', '1'); return ui.close(); }
+      if (k === 'close') return ui.close();
+    } else if (id === 'create') {
+      if (k === 'back') return showWelcome(flow.wc);
+      if (k !== 'submit') return;
+      name = (v.u || '').trim();
+      if (!CORE.normName(name)) return say(errMsg('bad_name'), true);
+      if ((v.p || '').length < 6) return say(errMsg('bad_password'), true);
+      if (v.p !== v.p2) return say("The two passwords don't match.", true);
+      var email = (v.e || '').trim();
+      if (email && !EMAIL_RE.test(email)) return say("That doesn't look like an email address.", true);
+      var loc = CORE.readLocal(ls);
+      say('Creating your account...');
+      r = await net.worker('/signup', { username: name, password: v.p, email: email || undefined, code: myCode(name), vr: loc.vr == null ? undefined : loc.vr, pw: maxPw(loc.gsp) });
+      if (!r.ok) return say(errMsg(r.err), true);
+      var extra = '';
+      flow.relogin = false;
+      try {
+        await signedIn(r.token, r.name, r.code, { pe: r.verifyEmail ? email : undefined });
+        if (r.verifyEmail) extra = (await sendVerify(email)) ? 'We sent a link to ' + email + '. Open it to verify your email.' : "We couldn't send the email link. You can add your email again in Account.";
+      } catch (e) {
+        flow.relogin = true;
+        extra = 'Your account is ready, but signing in failed. Log in with your password after this.';
+      }
+      flow.rcBack = false;
+      return ui.show(S.recovery({ code: r.recovery, extra: extra }));
+    } else if (id === 'recovery') {
+      if (k !== 'saved') return;
+      if (flow.rcBack) { flow.rcBack = false; return showAccount(); }
+      if (flow.relogin) { flow.relogin = false; return showLogin({}); }
+      say('Saving...');
+      return finish();
+    } else if (id === 'login') {
+      if (k === 'back') return showWelcome(flow.wc);
+      if (k === 'forgot') return showForgot('code', (v.u || '').trim());
+      if (k === 'guest') { if (!savedName()) H.setName(CORE.guestName()); lset('pixel.welcomed', '1'); return ui.close(); }
+      if (k !== 'submit') return;
+      if (!(v.u || '').trim() || !v.p) return say(errMsg('login_failed'), true);
+      say('Logging in...');
+      var F = fr(), me = F && F.me && F.me();
+      r = await net.worker('/login', { username: v.u, password: v.p, devCode: me && me.c || undefined });
+      if (!r.ok) {
+        if (r.err === 'busy') { showLogin({ name: v.u, busy: true, msg: { t: BUSY, bad: true } }, { u: v.u, p: v.p }); return; }
+        return say(errMsg(r.err), true);
+      }
+      try { await signedIn(r.token, r.name, r.code); } catch (e) { return say(BUSY, true); }
+      say('Loading your save...');
+      return finish();
+    } else if (id === 'forgot') {
+      if (k === 'back') return showLogin({ name: (v.u || '').trim() });
+      if (k === 'tab-code') return showForgot('code', v.u);
+      if (k === 'tab-email') return showForgot('email', v.u);
+      if (k === 'reset') {
+        if (!(v.u || '').trim()) return say('Type your username first.', true);
+        say('Sending...');
+        r = await net.worker('/reset-email', { username: v.u });
+        if (r.ok === false && r.err === 'busy') return say(BUSY, true);
+        return say('If that account has a verified email, a reset link is on its way.');
+      }
+      if (k === 'recover') {
+        if (!(v.u || '').trim() || !(v.c || '').trim()) return say(errMsg('bad_code'), true);
+        if ((v.p || '').length < 6) return say(errMsg('bad_password'), true);
+        say('Checking...');
+        r = await net.worker('/recover', { username: v.u, code: v.c.trim().toUpperCase(), password: v.p });
+        if (!r.ok) return say(errMsg(r.err), true);
+        var pr = await net.getPublic('profiles/' + r.uid); // authoritative spelling of the name + the friend code
+        name = pr && pr.name || v.u.trim();
+        try { await signedIn(r.token, name, pr && pr.code || null); } catch (e) { return say(BUSY, true); }
+        say('Loading your save...');
+        return finish();
+      }
+    } else if (id === 'account') {
+      s = net.session();
+      if (!s) return showWelcome(true);
+      if (k === 'close') return ui.close();
+      if (k === 'pw') return form('pw', 'Change password', [{ id: 'p', label: 'New password (at least 6 characters)', type: 'password', auto: 'new-password', max: 128 }, { id: 'p2', label: 'New password again', type: 'password', auto: 'new-password', max: 128 }], 'Change password',
+        [{ t: 'Your other devices will be logged out.', c: 'm' }]);
+      if (k === 'email') return form('email', 'Email', [{ id: 'e', label: 'Email address', type: 'email', auto: 'email', max: 254 }], 'Send verification link',
+        [{ t: 'We email a link. Your email is used for password resets once you open it.', c: 'm' }]);
+      if (k === 'email-rm') {
+        say('Removing...');
+        idt = await net.idToken();
+        r = idt ? await net.worker('/email-clear', { idToken: idt }) : { ok: false, err: 'bad_token' };
+        if (!r.ok) return fail(r.err);
+        net.putSession({ pe: undefined });
+        return showAccount({ t: 'Email removed.' });
+      }
+      if (k === 'newcode') return ui.show(S.confirm({ id: 'newcode', title: 'New recovery code', lines: [{ t: 'This cancels your old recovery code. Write the new one down.', c: 'm' }], yes: 'Make a new code' }));
+      if (k === 'rename') return form('rename', 'Change username', [{ id: 'u', label: 'New username', val: s.name || '', max: 12, auto: 'username' }], 'Change username',
+        [{ t: 'You can do this once every 30 days. Your old name stays yours for 30 days.', c: 'm' }]);
+      if (k === 'others') {
+        say('Working...');
+        idt = await net.idToken();
+        r = idt ? await net.worker('/logout-others', { idToken: idt }) : { ok: false, err: 'bad_token' };
+        if (!r.ok) return fail(r.err);
+        await resign(r.token);
+        return showAccount({ t: 'Your other devices were logged out.' });
+      }
+      if (k === 'logout') {
+        if (H.busy()) return say('Finish your match first, then log out.', true);
+        say('Saving your progress...');
+        var res = await net.sync({ busy: H.busy });
+        if (res === 'offline' || res === 'busy') {
+          return ui.show(S.confirm({ id: 'logout-force', title: 'Log out', yes: 'Log out anyway', danger: true, lines: [{ t: "Couldn't save your latest progress online. If you log out now, progress since the last save is lost on this device.", c: 'er' }] }));
+        }
+        return doLogout();
+      }
+      if (k === 'delete') {
+        if (H.busy()) return say('Finish your match first.', true);
+        return ui.show(S.confirm({ id: 'delete', title: 'Delete my account', yes: 'Delete my account', danger: true, lines: [{ t: "This permanently deletes your account, username, save and online profile. It can't be undone.", c: 'er' }] }));
+      }
+    } else if (id === 'pw') {
+      if (k === 'cancel') return showAccount();
+      if (k !== 'submit') return;
+      if ((v.p || '').length < 6) return say(errMsg('bad_password'), true);
+      if (v.p !== v.p2) return say("The two passwords don't match.", true);
+      say('Working...');
+      idt = await net.idToken();
+      r = idt ? await net.worker('/password', { idToken: idt, password: v.p }) : { ok: false, err: 'bad_token' };
+      if (!r.ok) return fail(r.err);
+      await resign(r.token);
+      return showAccount({ t: 'Password changed. Your other devices were logged out.' });
+    } else if (id === 'email') {
+      if (k === 'cancel') return showAccount();
+      if (k !== 'submit') return;
+      var em = (v.e || '').trim();
+      if (!EMAIL_RE.test(em)) return say("That doesn't look like an email address.", true);
+      say('Sending...');
+      if (!(await sendVerify(em))) return say("Couldn't use that email.", true);
+      return showAccount({ t: 'Check your inbox to verify ' + em + '.' });
+    } else if (id === 'newcode') {
+      if (k === 'cancel') return showAccount();
+      if (k !== 'yes') return;
+      say('Working...');
+      idt = await net.idToken();
+      r = idt ? await net.worker('/recovery-code', { idToken: idt }) : { ok: false, err: 'bad_token' };
+      if (!r.ok) return fail(r.err);
+      flow.rcBack = true;
+      return ui.show(S.recovery({ code: r.recovery, extra: 'Your old code no longer works.' }));
+    } else if (id === 'rename') {
+      if (k === 'cancel') return showAccount();
+      if (k !== 'submit') return;
+      name = (v.u || '').trim();
+      if (!CORE.normName(name)) return say(errMsg('bad_name'), true);
+      say('Working...');
+      idt = await net.idToken();
+      r = idt ? await net.worker('/rename', { idToken: idt, username: name }) : { ok: false, err: 'bad_token' };
+      if (!r.ok) return fail(r.err);
+      net.putSession({ name: r.name });
+      s = net.session();
+      applyIdentity(r.name, s && s.code || null);
+      net.scheduleSync('friend');
+      return showAccount({ t: 'Username changed to ' + r.name + '.' });
+    } else if (id === 'logout-force') {
+      if (k === 'cancel') return showAccount();
+      if (k === 'yes') return doLogout();
+    } else if (id === 'delete') {
+      if (k === 'cancel') return showAccount();
+      if (k !== 'yes') return;
+      if (H.busy()) return say('Finish your match first.', true);
+      say('Deleting...');
+      idt = await net.idToken();
+      r = idt ? await net.worker('/delete', { idToken: idt }) : { ok: false, err: 'bad_token' };
+      if (!r.ok) return fail(r.err);
+      return doLogout();
+    }
+  }
+
+  function onAct(k, v, id) {
+    if (lock) return;
+    lock = true;
+    Promise.resolve().then(function () { return handle(k, v || {}, id); })
+      .catch(function () { say(BUSY, true); })
+      .then(function () { lock = false; });
+  }
+  function panel() { if (!ui) ui = UIF(onAct); return ui; }
+
+  // ---- friend profiles (read by FR) ----
+  var PC = 'pixel.acct.pc', TTL = 10 * 60 * 1000;
+  function numOr(v) { return typeof v === 'number' && isFinite(v) ? v : undefined; }
+  function cleanProfile(p, c) { // public docs are owner-writable: trust only the expected types and sizes
+    return {
+      name: typeof p.name === 'string' ? p.name.slice(0, 12) : '', code: c,
+      vr: numOr(p.vr), pw: numOr(p.pw), main: typeof p.main === 'string' ? p.main.slice(0, 16) : '', ls: numOr(p.ls)
+    };
+  }
+  async function profiles(codes) {
+    var out = {}, pc = jget(PC) || {}, now = Date.now(), todo = [];
+    (codes || []).forEach(function (c) {
+      if (!/^\d{10}$/.test(String(c))) return;
+      var e = pc[c];
+      if (e && now - e.t < TTL) { if (e.p) out[c] = e.p; } else todo.push(c);
+    });
+    await Promise.all(todo.map(async function (c) {
+      var cd = await net.getPublic('codes/' + c), p = cd && cd.uid ? await net.getPublic('profiles/' + cd.uid) : null;
+      var o = p ? cleanProfile(p, c) : null;
+      pc[c] = { t: now, p: o };
+      if (o) out[c] = o;
+    }));
+    if (todo.length) jset(PC, pc);
+    return out;
+  }
+  async function byName(username) {
+    var r = await net.worker('/lookup-name', { username: username });
+    return r && r.ok ? { code: r.code || null, name: r.name } : null;
+  }
+
+  var tickT = 0;
+  function startTick() { if (tickT) return; tickT = setInterval(function () { net.scheduleSync('tick'); }, 5 * 60 * 1000); }
+
+  G.PXA = {
+    on: true,
+    init: function (h) {
+      H = Object.assign(H, h || {});
+      net.setBusy(function () { try { return !!H.busy(); } catch (e) { return false; } });
+      net.setMain(function () { try { return H.main ? H.main() : null; } catch (e) { return null; } }); // optional: most-played fighter/racer
+    },
+    boot: function () {
+      panel();
+      var s = net.session();
+      if (s && s.uid) {
+        if (s.name) { var me = jget('pixel.me'); if (!me || (s.code && me.c !== s.code) || me.n !== s.name) applyIdentity(s.name, s.code || null); }
+        net.scheduleSync('login');
+        startTick();
+        net.getPublic('profiles/' + s.uid).then(function (p) { // renamed on another device?
+          var cs = net.session();
+          if (p && p.name && cs && cs.uid === s.uid && cs.name !== p.name) { net.putSession({ name: p.name }); applyIdentity(p.name, cs.code || null); }
+        });
+        return;
+      }
+      if (!lget('pixel.welcomed')) showWelcome(false);
+    },
+    isOpen: function () { return !!(ui && ui.isOpen()); },
+    openAccount: function () { panel(); if (net.session()) showAccount(); else showWelcome(true); },
+    result: function () { net.scheduleSync('result'); },
+    friendChanged: function () { net.scheduleSync('friend'); },
+    user: function () { var s = net.session(); return s && s.uid ? { name: s.name || '', code: s.code || (jget('pixel.me') || {}).c || null } : null; },
+    profiles: profiles,
+    byName: byName
+  };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ==== PXACCT END ==== */
 /* ============ FRIENDS: the same code in Pixel Smash and Pixel Smash Kart (keep both copies identical) ============
    A friend code is 10 digits. The first 9 come from your username plus the date and time you first picked it; the
    last is a check digit that also tells the two kinds of code apart: a real player's, or a made-up player's. A made-up
@@ -8921,11 +10297,12 @@ const FR=(()=>{
     const l=L();if(l.some(f=>f.c===c))return'exists';if(l.length>=MAX)return'full';
     const F=k==='fake'?fake(c):null,f={c,k,n:okName(o.n)?o.n:F?F.name:null,a:Date.now(),sd:today(),rec:o.rec&&o.rec.kart?o.rec:blankRec()};
     if(o.vr>0)f.vr=Math.round(o.vr);if(o.pw>0)f.pw=Math.round(o.pw);if(o.pc)f.pc=String(o.pc).slice(0,16);if(o.mode)f.mode=o.mode;
-    l.push(f);put(KF,l);return'added'}
-  function remove(c){put(KF,L().filter(f=>f.c!==clean(c)))}
+    l.push(f);put(KF,l);fch();return'added'}
+  function remove(c){put(KF,L().filter(f=>f.c!==clean(c)));fch()}
+  function fch(){try{if(typeof PXA!=='undefined')PXA.friendChanged()}catch(e){}}
   function rec(c,game,won){return upd(c,f=>{if(!f.rec)f.rec=blankRec();const r=f.rec[game]||(f.rec[game]={w:0,l:0});if(won)r.w++;else r.l++})}
   // a real player's numbers stay at what you last saw
-  function seen(c,o){return upd(c,f=>{if(okName(o.n))f.n=o.n;if(o.vr>0)f.vr=Math.round(o.vr);if(o.pw>0)f.pw=Math.round(o.pw);if(o.pc)f.pc=String(o.pc).slice(0,16);if(o.mode)f.mode=o.mode;f.ls=Date.now();if(f.k==='fake')f.sd=today()})}
+  function seen(c,o){return upd(c,f=>{if(okName(o.n))f.n=o.n;if(o.vr>0)f.vr=Math.round(o.vr);if(o.pw>0)f.pw=Math.round(o.pw);if(o.pc)f.pc=String(o.pc).slice(0,16);if(o.mode)f.mode=o.mode;f.ls=o.ls>0?Math.max(f.ls||0,+o.ls):Date.now();if(f.k==='fake')f.sd=today()})}
   const vrOf=f=>f.k!=='fake'?f.vr||null:Math.max(1,Math.min(99999,(f.vr!=null?f.vr:fake(f.c).vr)+drift(f.c,0x51,f.sd!=null?f.sd:today(),today(),150)));
   const pwOf=f=>f.k!=='fake'?f.pw||null:Math.max(100000,(f.pw!=null?f.pw:fake(f.c).pw)+drift(f.c,0x77,f.sd!=null?f.sd:today(),today(),160000));
   // friend card: a longer code that carries your name and numbers, so a friend can add you while your game is closed
@@ -8942,12 +10319,14 @@ const FR=(()=>{
       p.on('connection',cn=>{cn.on('data',m=>{if(!m||m.t!=='who')return;if(kind(m.c)==='real'&&find(m.c)){seen(m.c,{n:m.n,vr:m.vr,pw:m.pw,pc:m.pc,mode:m.mode});P.st[clean(m.c)]={at:Date.now(),r:{st:m.st||'online',g:m.g,mode:m.mode}};if(isOpen())draw()}let i={};try{i=P.info&&P.info()||{}}catch(e){}
         try{cn.send(Object.assign({t:'me',n:me.n,c:me.c,g:P.game},i))}catch(e){}setTimeout(()=>{try{cn.close()}catch(e){}},1500)})})}).catch(()=>{P.busy=false})}
   // ask each real friend's game where they are. onEach(code, reply or null) as answers come in
-  async function lookup(codes,onEach){const pmm=P.pmm;if(!pmm||!codes.length||typeof RTCPeerConnection==='undefined'){codes.forEach(c=>onEach(c,null));return}
+  async function lookup(codes,onEach){let pr={};if(typeof PXA!=='undefined'&&PXA.on){try{pr=await PXA.profiles(codes)||{}}catch(e){}}
+    for(const c of codes){const p=pr[c];if(p)seen(c,{n:p.name,vr:p.vr,pw:p.pw,pc:p.main,ls:p.ls})}
+    const pmm=P.pmm;if(!pmm||!codes.length||typeof RTCPeerConnection==='undefined'){codes.forEach(c=>onEach(c,null));return}
     if(!await pmm.load()){codes.forEach(c=>onEach(c,null));return}const tmp=await pmm.open(null);if(!tmp||tmp==='taken'){codes.forEach(c=>onEach(c,null));return}
     const me=meGet(),ask=id=>new Promise(res=>{let done=false;const cn=tmp.connect(id,{reliable:true,serialization:'json'});
       const end=v=>{if(done)return;done=true;clearTimeout(t);tmp.off('error',onE);try{cn.close()}catch(e){}res(v)},t=setTimeout(()=>end(null),10000),onE=e=>{if(e&&e.type==='peer-unavailable'&&String(e.message||'').includes(id))end(null)};
       tmp.on('error',onE);cn.on('open',()=>{let i={};try{i=P.info&&P.info()||{}}catch(e){}try{cn.send(Object.assign({},i,{t:'who',c:me&&me.c,n:me&&me.n,g:P.game}))}catch(e){}});cn.on('data',m=>{if(m&&m.t==='me')end(m)});cn.on('close',()=>end(null))});
-    try{for(const c of codes){let r=null;for(const g of P.game==='s'?['s','k']:['k','s']){r=await ask('pxfr1-'+g+'-'+c);if(r&&r.c===c)break;r=null}
+    try{for(const c of codes){let r=null;const tc=pr[c]&&pr[c].code||c;for(const g of P.game==='s'?['s','k']:['k','s']){r=await ask('pxfr1-'+g+'-'+tc);if(r&&r.c===tc)break;r=null}
       P.st[c]={at:Date.now(),r};if(r)seen(c,{n:r.n,vr:r.vr,pw:r.pw,pc:r.pc,mode:r.mode});onEach(c,r)}}finally{try{tmp.destroy()}catch(e){}}}
   function status(f){if(f.k==='fake')return{st:fakeStatus(f.c),mode:f.mode||fake(f.c).mode};const s=P.st[f.c];if(!s||Date.now()-s.at>15e4)return{st:'unknown'};return s.r?{st:s.r.st||'online',mode:s.r.mode,room:s.r.room,g:s.r.g}:{st:'offline'}}
   /* ---- meeting in a room: if either of you has the other's code, you both become friends ---- */
@@ -9005,9 +10384,12 @@ const FR=(()=>{
     if(k==='close')return close();
     if(k==='copy'){const me=meGet();if(me){copy(fmt(me.c));say('Code copied. Friends type it into Add a friend.')}return}
     if(k==='card'){const t=card(opt.info&&opt.info()||{});if(t){copy(t);say('Friend card copied. It works even while your game is closed.')}return}
-    if(k==='add'){const inp=el.querySelector('#px-fr-in'),p=parse(inp?inp.value:'');if(!p)return say('That is not a friend code.',true);
+    if(k==='add'){const inp=el.querySelector('#px-fr-in'),raw=inp?inp.value:'',p=parse(raw),fin=p=>{
       const r=add(p);if(r==='added'){if(inp)inp.value='';const f=find(p.c);if(f&&f.k==='real'&&!f.n){say('Added. Their name shows up once their game is online.');lookup([p.c],()=>draw())}else say('Added '+(f&&f.n||'a friend')+'!')}
-      else say(r==='exists'?'Already on your list.':r==='self'?'That is your own code.':r==='full'?'Your list is full ('+MAX+').':'That is not a friend code.',true);return}
+      else say(r==='exists'?'Already on your list.':r==='self'?'That is your own code.':r==='full'?'Your list is full ('+MAX+').':'That is not a friend code.',true)};
+      if(p){fin(p);return}const u=String(raw).trim();
+      if(typeof PXA!=='undefined'&&PXA.on&&/^[A-Za-z0-9_.\-]{3,12}$/.test(u)){PXA.byName(u).then(r=>{if(r&&r.code)fin({c:r.code,n:r.name});else say(r?'That player has no friend code yet.':'No player with that username.',true)}).catch(()=>say('Could not look that up. Try again later.',true));return}
+      return say('That is not a friend code.',true)}
     if(k==='addr'){const o=(opt.room||[]).find(o=>o.c===c);if(!o)return;const r=add({c:o.c,n:o.n,vr:o.vr,pw:o.pw,pc:o.pc,rec:o.recAll,mode:o.mode});say(r==='added'?'Added '+o.n+'!':r==='exists'?'Already friends.':'Could not add.',r!=='added'&&r!=='exists');return}
     if(k==='del'){const f=find(c);if(f&&confirm('Remove '+(f.n||fmt(c))+' from your friends?')){remove(c);say('Removed.')}return}
     if(k==='join'){const f=find(c),j=opt.onJoin;if(!f||!j)return;const s=status(f);close();j(f,s)}}
@@ -9033,8 +10415,8 @@ const ONL={
   mode:'glory',ch:0,lobby:false,inMatch:false,ending:false,phase:'',t:0,dur:0,opp:[],vsSlots:[],vsT:0,vsSlam:false,leftMsg:'',
   nameErr:'',nameShake:0,conn:null,dq:[],stall:0,slowT:0,drop:-1,dying:0,errCode:'',won:false,powFrom:null,powTo:null,powTick:false,powDone:false,
   fmt(n){return Math.round(n).toLocaleString('en-US')},
-  pow(id){const g=S.gsp||{};return g[id]===undefined?7000000:g[id]},
-  setPow(id,v){(S.gsp||(S.gsp={}))[id]=Math.round(v);saveS()},
+  pow(id){gspPull();const g=S.gsp||{};return g[id]===undefined?7000000:g[id]},
+  setPow(id,v){gspPull();(S.gsp||(S.gsp={}))[id]=Math.round(v);saveS()},
   lvFor(p){return clamp(Math.round(3+(p-7000000)/1500000),1,9)}, // 7,000,000 Power meets level 3
   fakeName(){
     const a=pick(ONL_A),b=pick(ONL_B),n=Math.random()*100|0,r=Math.random();
@@ -9212,6 +10594,7 @@ const ONL={
     if(mi>=0)for(const o of this.opp){const oi=m.snap.findIndex(q=>q.onl===o.name);if(oi<0)continue;const w=mi<oi;o.srec=o.srec||{w:0,l:0};if(w)o.srec.w++;else o.srec.l++;
       if(o.fc&&FR.has(o.fc)){FR.rec(o.fc,'smash',w);if(o.real)FR.seen(o.fc,{n:o.name,pw:o.pow,pc:o.ch>=0&&ROSTER[o.ch]?ROSTER[o.ch].name:''})}}
     for(const o of this.opp){if(o.real){o.rm=false;o.rematch=!o.gone;continue}const lost=m.snap[0].onl!==o.name;o.rematch=Math.random()<(lost?.75:.5)}
+    if(typeof PXA!=='undefined')PXA.result();
   },
   toResults(){
     if(this.ending)return;this.ending=true;
@@ -9580,6 +10963,8 @@ camX=-W/2;
 for(let i=0;i<30;i++)stepWorld(FIX);
 if(UI.still)UI.frozen=true;
 setScreen('title');
+if(typeof PXA!=='undefined')PXA.init({game:'s',flush:saveS,reload:()=>{S.gsp=gspLS()||{};gspSeen=JSON.stringify(S.gsp);FR.ensure(S.onlName)},setName:n=>{S.onlName=n;try{const o=JSON.parse(localStorage.getItem('pixelsmash.settings')||'{}');o.onlName=n;localStorage.setItem('pixelsmash.settings',JSON.stringify(o))}catch(e){}pxKartName(n);FR.ensure(n)},busy:()=>ONL.inMatch||!!S.ppend,beep:ok=>uiTone(ok?'ok':'back')});
+if(typeof PXA!=='undefined')PXA.boot();
 draw();updateRead();syncUI();
 requestAnimationFrame(frame);
 ADS.loaded();
