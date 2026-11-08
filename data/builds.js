@@ -1,6 +1,6 @@
 /* written by site/sync.py - do not edit by hand */
 window.GL_BUILDS = {
-  "version": "1.411",
+  "version": "1.420",
   "synced": "2026-11-08",
   "games": {
     "smash": {
@@ -8,11 +8,11 @@ window.GL_BUILDS = {
       "html": {
         "file": "games/pixel-smash.html",
         "saveAs": "Pixel Smash.html",
-        "size": 3131912,
+        "size": 3140793,
         "date": "2026-11-08"
       },
       "apk": {
-        "file": "downloads/PixelSmash-v1.411.apk",
+        "file": "downloads/PixelSmash-v1.420.apk",
         "size": 2057993,
         "date": "2026-11-08"
       }
@@ -22,18 +22,18 @@ window.GL_BUILDS = {
       "html": {
         "file": "games/pixel-smash-kart.html",
         "saveAs": "Pixel Smash Kart.html",
-        "size": 2035458,
+        "size": 2063266,
         "date": "2026-11-08"
       },
       "apk": {
-        "file": "downloads/PixelSmashKart-v1.411.apk",
-        "size": 1398537,
+        "file": "downloads/PixelSmashKart-v1.420.apk",
+        "size": 1410825,
         "date": "2026-11-08"
       }
     }
   },
   "bundle": {
-    "file": "downloads/GreenlightStudios-PixelGames-v1.411.zip",
-    "size": 3467864
+    "file": "downloads/GreenlightStudios-PixelGames-v1.420.zip",
+    "size": 3479651
   }
 };

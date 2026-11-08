@@ -155,6 +155,11 @@
         btn.href = g.apk.file; btn.setAttribute('download', g.apk.file.split('/').pop());
       }
     });
+    // the changelog page shows each game's latest version straight from the build data
+    document.querySelectorAll('[data-latest]').forEach((el) => {
+      const g = B.games[el.dataset.latest];
+      if (g) el.textContent = 'v' + B.version;
+    });
     const bl = document.querySelector('[data-bundle]');
     if (B.bundle && bl) {
       bl.href = B.bundle.file; bl.setAttribute('download', B.bundle.file.split('/').pop());

@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Changelog &mdash; Greenlight Studios</title>
+<meta name="description" content="Every release of Pixel Smash and Pixel Smash Kart, from launch to now, with what changed and when.">
+<meta name="theme-color" content="#0c1024">
+<meta property="og:title" content="Changelog &mdash; Greenlight Studios">
+<meta property="og:description" content="What changed in Pixel Smash and Pixel Smash Kart, release by release.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Silkscreen&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<script>document.documentElement.classList.remove('no-js')</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="tl" viewBox="0 0 10 24" shape-rendering="crispEdges">
+    <rect x="1" y="0" width="8" height="24" fill="#06070f"/><rect x="0" y="1" width="10" height="22" fill="#06070f"/>
+    <rect x="1" y="1" width="8" height="22" fill="#2a3150"/><rect x="1" y="2" width="1" height="20" fill="#3c4570"/><rect x="8" y="2" width="1" height="20" fill="#1c2238"/>
+    <rect x="1" y="1" width="1" height="1" fill="#06070f"/><rect x="8" y="1" width="1" height="1" fill="#06070f"/><rect x="1" y="22" width="1" height="1" fill="#06070f"/><rect x="8" y="22" width="1" height="1" fill="#06070f"/>
+    <g><rect x="3" y="2" width="4" height="6" style="fill:var(--lr)"/><rect x="2" y="3" width="6" height="4" style="fill:var(--lr)"/><rect x="3" y="3" width="4" height="4" style="fill:var(--lr2)"/><rect x="3" y="3" width="2" height="1" style="fill:var(--lrh)"/><rect x="3" y="4" width="1" height="1" style="fill:var(--lrh)"/></g>
+    <g><rect x="3" y="9" width="4" height="6" style="fill:var(--la)"/><rect x="2" y="10" width="6" height="4" style="fill:var(--la)"/><rect x="3" y="10" width="4" height="4" style="fill:var(--la2)"/><rect x="3" y="10" width="2" height="1" style="fill:var(--lah)"/><rect x="3" y="11" width="1" height="1" style="fill:var(--lah)"/></g>
+    <g><rect x="3" y="16" width="4" height="6" style="fill:var(--lg)"/><rect x="2" y="17" width="6" height="4" style="fill:var(--lg)"/><rect x="3" y="17" width="4" height="4" style="fill:var(--lg2)"/><rect x="3" y="17" width="2" height="1" style="fill:var(--lgh)"/><rect x="3" y="18" width="1" height="1" style="fill:var(--lgh)"/></g>
+  </symbol>
+  <symbol id="i-play" viewBox="0 0 8 8"><path fill="currentColor" d="M1 0h2v8H1zM3 1h2v6H3zM5 2h2v4H5zM7 3h1v2H7z"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="Greenlight Studios home">
+      <svg aria-hidden="true"><use href="#tl"/></svg>
+      <span><b>Greenlight</b><small>STUDIOS</small></span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html#games">Games</a>
+      <a href="index.html#download">Download</a>
+      <a href="changelog.html" aria-current="page">Changelog</a>
+      <a href="index.html#about">About</a>
+      <a class="btn sm gold" href="play.html?game=kart"><svg aria-hidden="true"><use href="#i-play"/></svg>Play</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top" class="log-page">
+  <div class="wrap">
+    <div class="center rise log-head">
+      <p class="kicker">Release notes</p>
+      <h1 class="title">Changelog</h1>
+      <p class="lede">Every release of both games, newest first. The two games share one save and one version number, so a release that touched the studio rather than the game still shows up here.</p>
+    </div>
+
+    <div class="logs">
+
+      <article class="log panel rise" id="smash">
+        <header>
+          <img src="img/smash-icon.png" alt="" width="56" height="56">
+          <div><h2>Pixel Smash</h2><small>Latest <b data-latest="smash">v1.420</b> &middot; platform fighter</small></div>
+        </header>
+        <ol class="rel">
+          <li class="latest">
+            <div class="head"><span class="v">v1.420</span><span class="tag now">Latest</span><time datetime="2026-11-08">8 Nov 2026</time></div>
+            <ul>
+              <li>Released alongside the Kart ghosts update so both games report the same version. <b>No gameplay changes in Smash.</b></li>
+              <li>Your save, Power and friends are untouched; the version move keeps online play matched across the two games.</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.411</span><time datetime="2026-11-08">8 Nov 2026</time></div>
+            <ul>
+              <li>The stage now fills the screen on 4:3 displays instead of sitting in a letterboxed strip.</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.41</span><time datetime="2026-11-08">8 Nov 2026</time></div>
+            <ul>
+              <li>HUD text is baked into small canvases once and blitted, instead of being redrawn glyph by glyph every frame. Fewer draw calls, steadier frame times.</li>
+              <li><b>Perf stats</b> overlay (F3, or Options &rarr; Perf stats) shows FPS, JS time and the worst frame.</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.2</span><time datetime="2026-11-07">7 Nov 2026</time></div>
+            <ul>
+              <li><b>Pixel accounts.</b> Create a username and password and your save follows you to any device.</li>
+              <li>Saves <b>merge</b> instead of overwriting: playing offline on one device and online on another keeps both.</li>
+              <li>Forgotten password recovery with a written-down recovery code or an optional email.</li>
+              <li>Friends are built on accounts, so a friend's name arrives even when they are not online.</li>
+              <li>Guests still play everything; a guest can turn their progress into an account at any time.</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.1</span><span class="tag">Foundation</span><time datetime="2026-11-07">7 Nov 2026</time></div>
+            <ul>
+              <li><b>Sweet and sour hitboxes:</b> weapon tips hit harder than shafts, late frames of long-lasting moves do less, and a fast swing can no longer pass through someone between frames.</li>
+              <li><b>Hitbox view</b> in Training draws hitboxes, hurtboxes and each swing's path for a frame.</li>
+              <li><b>CPUs think more like people:</b> human reaction times, favourite moves, reads on your habits at level 6+, and mistakes at low levels.</li>
+              <li>Balance pass on Vespa, Cragg, Runner, Sorrel and Clover, tuned with 180-match CPU round robins.</li>
+              <li>Music player, plus battle music that can shuffle a random stage song each match.</li>
+              <li>Online anti-cheat: the host checks speed, items, finishes and hits, and leaving early costs Power.</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.0</span><time datetime="2026-11-06">6 Nov 2026</time></div>
+            <ul>
+              <li><b>Launch.</b> Six fighters, seven stages, one to four players on one screen.</li>
+              <li>Online <b>For Fun</b> and <b>For Glory</b>, LAN play, friends with win&ndash;loss records, and a save shared with Pixel Smash Kart.</li>
+              <li>Tilts, smashes, specials, grabs, shields and parries; damage percentage, blast zones and Sudden Death.</li>
+            </ul>
+          </li>
+        </ol>
+      </article>
+
+      <article class="log panel rise" id="kart">
+        <header>
+          <img src="img/kart-icon.png" alt="" width="56" height="56">
+          <div><h2>Pixel Smash Kart</h2><small>Latest <b data-latest="kart">v1.420</b> &middot; kart racer</small></div>
+        </header>
+        <ol class="rel">
+          <li class="latest">
+            <div class="head"><span class="v">v1.420</span><span class="tag now">Latest</span><time datetime="2026-11-08">8 Nov 2026</time></div>
+            <ul>
+              <li><b>Real time trial ghosts.</b> Your best run is recorded and replays beside you: same line, same drifts, same boosts.</li>
+              <li><b>Leaderboards</b> for every course: the world top 20, with the racer, kart and the exact stat line each time was set with. Older times show an <b>older stats</b> tag when a racer has been retuned since.</li>
+              <li><b>Download ghosts</b> from the board, eight per course. The ninth asks which one to delete.</li>
+              <li><b>Race all of them at once</b>, or <b>watch</b> them together and flip the camera between ghosts.</li>
+              <li>Online spectating gets the same <b>camera switching</b>: left/right or C, with the camera number on screen.</li>
+              <li>Posting a time needs a sign-in; browsing and downloading do not.</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.411</span><time datetime="2026-11-08">8 Nov 2026</time></div>
+            <ul>
+              <li>Fixed the course "swimming" introduced in 1.41: the depth lattice is fixed per view and track again, so the road stays put while you drive.</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.41</span><time datetime="2026-11-08">8 Nov 2026</time></div>
+            <ul>
+              <li><b>Tricks</b> now fire from a drift press as well as holding drift, and every ramp throws you into the air with a boost.</li>
+              <li>Full-detail ground at half the raycast samples, with no automatic resolution drop while racing.</li>
+              <li>Text is measured once per string instead of every frame, which stops the HUD stalling the GPU while you drive.</li>
+              <li><b>Perf stats</b> overlay (F3, or Options &rarr; Perf stats).</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.2</span><time datetime="2026-11-07">7 Nov 2026</time></div>
+            <ul>
+              <li><b>Pixel accounts</b>, shared with Pixel Smash: cloud save that merges, username and password, recovery codes, and friends who show up by name.</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.1</span><span class="tag">Foundation</span><time datetime="2026-11-07">7 Nov 2026</time></div>
+            <ul>
+              <li><b>Speed rebalance:</b> the top-speed spread was halved, so acceleration, handling, traction and mini-turbo matter again (light karts were about 15% slower per lap).</li>
+              <li>Racer and kart tuning for Clover, Sorrel, Harrow, Vespa and six karts, checked over 120 simulated item races.</li>
+              <li>Music player, plus race music that can shuffle a random course song each race.</li>
+              <li>Online anti-cheat, and leaving a race early now costs VR.</li>
+              <li><i>Clear records</i> asks for a second press, so one stray press no longer wipes every time-trial record.</li>
+            </ul>
+          </li>
+          <li>
+            <div class="head"><span class="v">v1.0</span><time datetime="2026-11-06">6 Nov 2026</time></div>
+            <ul>
+              <li><b>Launch.</b> Six tracks in two cups, 50cc / 100cc / 150cc, ten items from Moss Pebbles to the Storm Bell.</li>
+              <li>Split-screen for two to four players, online races with up to eleven others, LAN play, and spectating a room until the next race.</li>
+              <li><b>Time trials</b> with a record per course, drift boosts, rocket starts and tricks off every ramp.</li>
+            </ul>
+          </li>
+        </ol>
+      </article>
+
+    </div>
+
+    <div class="center rise log-cta">
+      <a class="btn red" href="play.html?game=smash"><svg aria-hidden="true"><use href="#i-play"/></svg>Play Pixel Smash</a>
+      <a class="btn gold" href="play.html?game=kart"><svg aria-hidden="true"><use href="#i-play"/></svg>Play Pixel Smash Kart</a>
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>&copy; <span id="yr">2026</span> Greenlight Studios</span>
+    <nav aria-label="Footer">
+      <a href="play.html?game=smash">Pixel Smash</a>
+      <a href="play.html?game=kart">Pixel Smash Kart</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="data/builds.js"></script>
+<script src="js/site.js"></script>
+<script src="data/adsense.js"></script>
+<script src="js/ads.js"></script>
+</body>
+</html>
