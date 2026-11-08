@@ -22,18 +22,18 @@ window.GL_BUILDS = {
       "html": {
         "file": "games/pixel-smash-kart.html",
         "saveAs": "Pixel Smash Kart.html",
-        "size": 2036093,
+        "size": 2035458,
         "date": "2026-11-08"
       },
       "apk": {
         "file": "downloads/PixelSmashKart-v1.411.apk",
-        "size": 1402633,
+        "size": 1398537,
         "date": "2026-11-08"
       }
     }
   },
   "bundle": {
     "file": "downloads/GreenlightStudios-PixelGames-v1.411.zip",
-    "size": 3468129
+    "size": 3467864
   }
 };
