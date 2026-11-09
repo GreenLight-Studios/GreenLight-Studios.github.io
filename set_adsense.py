@@ -9,15 +9,21 @@
              (AdSense > Ads > By ad unit > Display ads). Slots without an id stay hidden.
   --off      remove the publisher id again (no ads on the site)
 
-Writes data/adsense.js, ads.txt, the google-adsense-account meta tag on every page and the
-privacy page contact. Safe to run again with new values.
+Writes data/adsense.js, ads.txt, the google-adsense-account meta tag and the AdSense
+loader script on every page, and the privacy page contact. Safe to run again with new values.
 """
 import argparse, json, os, re
 
 SITE = os.path.dirname(os.path.abspath(__file__))
-PAGES = ['index.html', 'play.html', 'privacy.html']
+PAGES = ['index.html', 'play.html', 'changelog.html', 'about.html', 'privacy.html', 'delete-account.html']
 SLOTS = ['home-games', 'home-download', 'play-rail']
 CFG = os.path.join(SITE, 'data', 'adsense.js')
+
+# ownership + serving: the meta tag AdSense looks for, and the loader its snippet asks you to paste
+TAGS = ('<meta name="google-adsense-account" content="{c}">\n'
+        '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={c}" crossorigin="anonymous"></script>\n')
+RE_META = re.compile(r'<meta name="google-adsense-account" content="[^"]*">\n')
+RE_ADS = re.compile(r'<script async src="https://pagead2\.googlesyndication\.com/pagead/js/adsbygoogle\.js\?client=[^"]*"[^>]*></script>\n')
 
 
 def rd(p):
@@ -65,11 +71,12 @@ def main():
        "  slots: { " + ', '.join(f"'{k}': '{slots[k]}'" for k in SLOTS) + " }\n"
        "};\n")
 
-    # site ownership tag that AdSense looks for in each page head
+    # ownership + loader: the meta tag and script AdSense asks for, on every page head
     for p in PAGES:
-        t = re.sub(r'<meta name="google-adsense-account" content="[^"]*">\n', '', rd(p))
+        t = RE_META.sub('', rd(p))
+        t = RE_ADS.sub('', t)
         if client:
-            t = t.replace('<meta name="viewport"', f'<meta name="google-adsense-account" content="{client}">\n<meta name="viewport"', 1)
+            t = t.replace('<meta name="viewport"', TAGS.format(c=client) + '<meta name="viewport"', 1)
         wr(p, t)
 
     ads_txt = os.path.join(SITE, 'ads.txt')

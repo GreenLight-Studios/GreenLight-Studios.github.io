@@ -5,10 +5,13 @@
   const C = window.GL_ADSENSE || {}, client = C.client || '', slots = C.slots || {};
   if (!/^ca-pub-\d{10,20}$/.test(client)) return;
   document.documentElement.classList.add('ads-on');
-  const s = document.createElement('script');
-  s.async = true; s.crossOrigin = 'anonymous';
-  s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + client;
-  document.head.appendChild(s);
+  // the loader itself is in every page's <head> (set by set_adsense.py); add it only if a page lacks it
+  if (!document.querySelector('script[src*="adsbygoogle.js"]')) {
+    const s = document.createElement('script');
+    s.async = true; s.crossOrigin = 'anonymous';
+    s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + client;
+    document.head.appendChild(s);
+  }
   for (const box of document.querySelectorAll('[data-ad]')) {
     const id = slots[box.dataset.ad];
     if (!id) continue;
