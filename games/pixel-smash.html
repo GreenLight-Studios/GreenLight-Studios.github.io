@@ -175,7 +175,7 @@ const ADS=(()=>{
    can't go online until it is updated. If the site can't be reached, the game goes online anyway: a site that is
    down shouldn't stop anyone playing. CUR and SITE are set by set_version.py. Portal builds skip the check. */
 const VER=(()=>{
-  const CUR='1.5',SITE='https://greenlightstudios.app';
+  const CUR='1.51',SITE='https://greenlightstudios.app';
   let el=null,busy=false,cache=null,cacheT=0,padRaf=0;
   // a copy served from the site itself reads the file next to it; other copies (download, app) ask SITE
   const onSite=()=>/^https?:$/.test(location.protocol)&&/\/games\/[^/]*$/.test(location.pathname);
@@ -2496,7 +2496,7 @@ function drawPico(G){
     G.shape([[fx-F*3.6,fy],[fx+F*3.6,fy],[fx,fy+8]],(x,y)=>(((y*2+x+Math.floor(sp))&3)===0)?P.steel[2]:((x+y)&1)?P.steel[1]:P.steel[0])}
   G.head(r.blink>0?'blink':(f&&f.st==='land'&&f.t<6)||(m&&m.id==='usmash')?'happy':'open',8,10);
   { // the head propeller: idles slowly, a blur while it puffs in the air
-    const ax=px(q.hx)-8+8.5,ay=py(q.hy2)-10-1,air=f&&(f.st==='air'),fast=air&&f.vy<40,sp=tm*(fast?55:air?20:4),w=Math.round(Math.abs(Math.cos(sp))*4.5)+1;
+    const ax=px(q.hx)-8+8.5,ay=py(q.hy2)-10-1,air=f&&(f.st==='air'),fast=air&&(f.vy<40||!!f.introFly),sp=tm*(fast?55:air?20:4),w=Math.round(Math.abs(Math.cos(sp))*4.5)+1;
     for(let i=-w;i<=w;i++){B.set(Math.round(ax+i),ay-1,OUT);B.set(Math.round(ax+i),ay-2,fast&&(i&1)?P.steel[2]:P.coral[i*Math.sign(Math.cos(sp)||1)>0?2:1])}
     B.set(Math.round(ax),ay-3,OUT);B.set(Math.round(ax),ay-2,P.brass[2]);
   }
@@ -3459,7 +3459,7 @@ class Fighter{
     }
     if(s==='roll'){r.flipOn=true;r.flip=clamp(this.t/this.rollT)*Math.PI*2*(this.rollDir===this.face?1:-1)}
     r.ghost=this.intangible()&&!(this.move&&(this.move.burrow||this.move.getup));
-    if(this.hovering&&!this.move){r.atk=PZ.hover;r.atkOn=true}
+    if((this.hovering||this.introFly&&s==='air')&&!this.move){r.atk=PZ.hover;r.atkOn=true} // introFly: Pico's entrance
     if(this.move&&this.move.armor&&this.mt>=this.move.armor[0]&&this.mt<=this.move.armor[1]&&this.frame%8<5)r.edge=ARMOR_EDGE;
     if(this.move&&this.move.burrow){const[a,b2]=this.move.burrow,m=this.mt;r.sink=H0*(m<a?sstep(a-8,a,m):m<=b2?1:1-sstep(b2+1,b2+5,m))}
     if(s==='snared')r.sink=H0*.3;
@@ -8784,7 +8784,7 @@ function resetWorld(){
     f.out=false;f.dealt=0;f.hitlag=0;f.shakeV=false;f.stun=0;f.tumble=false;f.inAir=false;f.refill();f.ledge=null;f.helpless=false;f.pctShake=0;f.fx.length=0;f.trail.length=0;f.rig.tint=0;f.prev={mx:0,j:false,d:false};f.enter('idle');
   }
   const n=fighters.length,spread=n<=2?[-70,70]:n===3?[-96,0,96]:[-108,-36,36,108];
-  fighters.forEach((f,i)=>{f.x=spread[i]*Math.min(1,(HW-14)/Math.max(110,HW-14)*1.2);if(Math.abs(f.x)>HW-14)f.x=Math.sign(f.x)*(HW-14);f.face=f.x<=0?1:-1;f.kills=0;f.lastHitBy=null;f.brains=null;f.aiTgt=null;f.introGen=null});
+  fighters.forEach((f,i)=>{f.x=spread[i]*Math.min(1,(HW-14)/Math.max(110,HW-14)*1.2);if(Math.abs(f.x)>HW-14)f.x=Math.sign(f.x)*(HW-14);f.face=f.x<=0?1:-1;f.kills=0;f.lastHitBy=null;f.brains=null;f.aiTgt=null;f.introGen=null;f.introFly=false});
   for(const f of ALL_F)if(!fighters.includes(f))f.out=true;
   stats.lastMove='';
   bolts.length=0;sparks.length=0;parts.length=0;zaps.length=0;shake=0;
@@ -9954,9 +9954,11 @@ function* introScript(f){
     for(let k=0;k<3;k++)emit(f.x+(k-1)*10,f.y-4,10,{angle:-Math.PI/2,spread:1.6,speed:80,life:.4,c:['#2f6b3a','#4f9448','#d8506e'],g:90});
     for(let i=0;i<8;i++)yield NEUTRAL;
     yield IN({u:true,tilt:true,a:true});
-  }else if(id==='pico'){ // drops in from above and puffs the propeller to float down, then flicks its antenna
-    f.y=SY-120;f.vx=f.vy=0;f.fall();
-    for(let i=0;i<140&&f.st==='air';i++){const jp=f.vy>70&&f.jumps>0;yield IN({j:jp,mx:toward()});if(jp)for(let k=0;k<3;k++)yield IN({mx:toward()})}
+  }else if(id==='pico'){ // flies down on the head propeller, slowing as it nears the floor, then flicks its antenna
+    const below=()=>{let g=SY;for(const s of f.stage.surfaces)if(f.x>=s.x0&&f.x<=s.x1&&s.y>=f.y-.5&&s.y<g)g=s.y;return g}; // the floor or platform under it
+    f.y=SY-500;f.y=below()-100;f.vx=f.vy=0;f.fall();f.introFly=true; // 100px over the top surface it will land on
+    for(let i=0;i<140&&f.st==='air';i++){f.vy=Math.min(f.vy,46+(below()-f.y)*1.1);yield IN({mx:toward()})}
+    f.introFly=false;
     for(let i=0;i<6;i++)yield NEUTRAL;
     yield IN({u:true,tilt:true,a:true});
   }else if(id==='sorrel'){ // rides the broom in and hops off
@@ -9972,9 +9974,9 @@ function* introScript(f){
   if(f.st==='idle')f.face=f.x<=0?1:-1;
 }
 function introInput(f){
-  if(!UI.m||UI.m.phase!=='count'||++f.introN>170){f.introGen=null;return NEUTRAL}
+  if(!UI.m||UI.m.phase!=='count'||++f.introN>170){f.introGen=null;f.introFly=false;return NEUTRAL}
   const r=f.introGen.next();
-  if(r.done){f.introGen=null;return NEUTRAL}
+  if(r.done){f.introGen=null;f.introFly=false;return NEUTRAL}
   return r.value;
 }
 // the winner on the results screen, playing one of its moves
