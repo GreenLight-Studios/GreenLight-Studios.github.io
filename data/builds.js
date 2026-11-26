@@ -13,8 +13,8 @@ window.GL_BUILDS = {
       },
       "apk": {
         "file": "downloads/PixelSmash-v1.51.apk",
-        "size": 2160393,
-        "date": "2026-11-24"
+        "size": 2164489,
+        "date": "2026-11-26"
       }
     },
     "kart": {
@@ -28,7 +28,7 @@ window.GL_BUILDS = {
       "apk": {
         "file": "downloads/PixelSmashKart-v1.51.apk",
         "size": 1738505,
-        "date": "2026-11-24"
+        "date": "2026-11-26"
       }
     }
   },
