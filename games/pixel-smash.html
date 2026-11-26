@@ -8648,7 +8648,7 @@ function buildItems(){
     UI.tileR=R;
     add({id:'fight',label:'Fight',desc:'Up to four players: friends or CPUs.',r:R.fight,pal:UC.red,act:()=>{UI.selMode='match';go(()=>setScreen('fight'))}});
     add({id:'training',label:'Training',desc:'Practice on a dummy, with frame data.',r:R.training,pal:UC.teal,act:()=>{UI.selMode='training';go(()=>setScreen('fight'))}});
-    add({id:'online',label:'LAN',desc:'Play with computers on your network.',r:R.online,pal:UC.green,act:()=>go(()=>setScreen('online'))});
+    add({id:'online',label:'Rooms',desc:'Play friends anywhere, in a browser or on a Wii: share a room code.',r:R.online,pal:UC.green,act:()=>go(()=>setScreen('online'))});
     add({id:'onl',label:'Online',desc:'For Fun or For Glory against players everywhere.',r:R.watch,pal:UC.amber,act:()=>VER.gate('smash',()=>{if(window.PXCG_AUTH&&!S.onlName)S.onlName=(typeof PXA!=='undefined'&&PXA.user()&&PXA.user().name)||'guest0000_CG';go(()=>setScreen(S.onlName?'onlmode':'onlname'))},()=>uiTone('back'))});
     add({id:'moves',label:'Moves',desc:'See every move and its frame data.',r:R.moves,pal:UC.blue,act:()=>{UI.from='main';UI.mvC=S.hero;UI.mv=0;UI.mvTop=0;go(()=>setScreen('moves'))}});
     add({id:'options',label:'Options',desc:'Sound, screen shake and controls.',r:R.options,pal:UC.slate,act:()=>go(()=>setScreen('options'))});
@@ -8658,15 +8658,15 @@ function buildItems(){
   }else if(s==='online'){
     const narrow=W<320,x=narrow?8:16,w=narrow?W-20:Math.round(W*.4),y=30;
     const rows=NET.role==='host'?[
-      ['invite','Invite a player',()=>{if(!NET.pending&&NET.peers.length<3)NET.invite();lanPop.open()}],
+      ['invite',NET.paste?'Invite a player':'Room code',()=>{if(NET.paste&&!NET.pending&&NET.peers.length<3)NET.invite();lanPop.open()}],
       ['go','Choose fighters',()=>{lanPop.hide();UI.selMode='match';go(()=>setScreen('fight'))}],
       ['stop','Stop hosting',()=>{NET.close();lanPop.hide();buildItems()}]
     ]:NET.role==='client'?[
-      ['code','Show reply code',()=>lanPop.open()],
+      ['code',NET.code?'Show room':'Show reply code',()=>lanPop.open()],
       ['cancel','Cancel',()=>{NET.close();lanPop.hide();buildItems()}]
     ]:[
-      ['host','Host a game',()=>{NET.host();lanPop.open()}],
-      ['join','Join a game',()=>{NET.close(true);NET.err='';lanPop.open()}]
+      ['host','Host a room',()=>{NET.host();lanPop.open()}],
+      ['join','Join a room',()=>{NET.close(true);NET.err='';lanPop.pairing=false;lanPop.open()}]
     ];
     rows.push(['back','Back',()=>{lanPop.hide();uiBack()}]);
     rows.forEach(([id,label,act],i)=>add({id,label,kind:'row',act,r:{x,y:y+i*23,w,h:20}}));
@@ -9449,7 +9449,7 @@ function drawOptions(){
 // the LAN screen: who is hosting, how to reach it, who is in
 function drawOnline(){
   ctx.drawImage(UI.bd?dimMA:dimA,0,0);
-  drawHeader('LAN',UC.green);
+  drawHeader('Rooms',UC.green);
   UI.items.forEach((o,i)=>drawRow(o,i===UI.sel,i));
   const narrow=W<320,x=narrow?8:Math.round(W*.46),w=W-x-10,y0=narrow?104:30,e=entK(2,.3);
   ctx.save();ctx.globalAlpha=e;
@@ -9461,7 +9461,7 @@ function drawOnline(){
 }
 function drawNetWait(){
   ctx.drawImage(UI.bd?dimMA:dimA,0,0);
-  drawHeader('LAN',UC.green);
+  drawHeader('Rooms',UC.green);
   UI.items.forEach((o,i)=>drawRow(o,i===UI.sel,i));
   const narrow=W<320,sl=NET.mySlot,x=narrow?8:Math.round(W*.5),y0=30,cw=Math.min(130,W-x-12),chh=H-y0-34;
   if(sl.ch>=0){
@@ -9989,14 +9989,95 @@ function makeWinPrev(){
 /* ---------- LAN: one computer hosts and runs the fight; the others send their buttons and draw what comes back ---------- */
 // Computers connect to each other directly (WebRTC). Nothing to install: the host makes an invite code,
 // the other player pastes it and gets a reply code, and the host pastes that back. The host is the only one that simulates.
-const NET={role:null,id:null,peers:[],err:'',inMatch:false,mySlot:{kind:'human',ch:-1},myPort:-1,inbox:[],q:{},lastF:[],fxOut:[],sentIn:'',seq:0,
+const NET={role:null,id:null,peers:[],err:'',inMatch:false,rl:null,code:'',paste:false,mySlot:{kind:'human',ch:-1},myPort:-1,inbox:[],q:{},lastF:[],fxOut:[],sentIn:'',seq:0,
   conns:{},pending:null,reply:'',busy:false,nextN:1,
   live(){return Object.values(NET.conns).some(c=>c.dc&&c.dc.readyState==='open')},
   // host: open the room and make the first invite
   host(){
     NET.close(true);NET.err='';NET.role='host';NET.id='h';
     if(CSS.mode!=='match'||!CSS.slots.length){UI.selMode='match';CSS.mode='';cssEnter()}
-    NET.invite();buildItems();
+    NET.rl=NET.rlOpen({role:'host'},NET.rlHost);buildItems();
+  },
+  /* ---- the relay (pixel-relay Worker): a room has a short code, so a friend anywhere can join, Wii or browser.
+     A browser guest only meets the host through it: the relay carries the WebRTC offer and answer, the two
+     connect directly and the guest leaves the relay. A Wii can't do WebRTC, so a Wii stays on the relay. ---- */
+  RELAY:typeof window!=='undefined'&&window.PXRELAY||'wss://pixel-relay.pixelsmash.workers.dev',PROTO:1,
+  rlOpen(q,on){
+    let ws;const r={ws:null,code:'',id:''};
+    try{ws=new WebSocket(NET.RELAY.replace(/\/+$/,'')+'/ws?'+new URLSearchParams({proto:NET.PROTO,ver:VER.CUR,plat:'web',name:String(S.onlName||'').slice(0,24),...q}))}
+    catch(e){NET.err='Could not reach the room server.';return null}
+    r.ws=ws;
+    ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}if(NET.rl===r)on(r,m)};
+    ws.onclose=()=>{if(NET.rl!==r)return;NET.rl=null;NET.rlGone(r)};
+    return r;
+  },
+  rlSend(to,s){const r=NET.rl;if(r&&r.ws.readyState===1)r.ws.send(to?'{"to":'+JSON.stringify(to)+',"d":'+s+'}':'{"d":'+s+'}')},
+  // a connection that goes through the relay; NET.send uses it like a data channel
+  pipe(to){return{relay:true,get readyState(){return NET.rl&&NET.rl.ws.readyState===1?'open':'closed'},send:s=>NET.rlSend(to,s)}},
+  rlErr(e){return{no_room:'No room has that code. Check it with the host.',full:'That room is full.',version:'That room is on a different version of the game. Both of you need the latest one.',
+    closed:'The host closed the room.',busy:'The room server is busy. Try again in a moment.'}[e]||'Could not reach the room server.'},
+  rlHost(r,m){
+    if(m.t==='room'){r.code=NET.code=m.code;lanPop.draw();if(UI.screen==='online')buildItems()}
+    else if(m.t==='peer'){if(NET.peers.length>=3)return;if(m.plat==='wii')NET.viaRelay(m.id);else NET.offer(m.id)}
+    else if(m.t==='m'){
+      const c=NET.conns[m.from],d=m.d;if(!c||!d||typeof d!=='object')return;
+      if(d.t==='sdp'&&c.up){c.pc.setRemoteDescription({type:'answer',sdp:String(d.s)}).catch(()=>NET.viaRelay(m.from))}
+      else if(c.dc&&c.dc.relay){d.from=m.from;NET.recv(d)}
+    }
+    else if(m.t==='gone'){const c=NET.conns[m.id];if(c&&(c.up||c.dc&&c.dc.relay))NET.lost(m.id)}   // a guest on WebRTC leaves the relay on purpose
+    else if(m.t==='err'){NET.err=NET.rlErr(m.e);lanPop.draw()}
+  },
+  // host: a guest that stays on the relay (a Wii, or a browser whose direct connection failed)
+  viaRelay(id){
+    const old=NET.conns[id];if(old){clearTimeout(old.upT);try{old.pc&&old.pc.close()}catch(e){}}
+    NET.conns[id]={pc:null,dc:NET.pipe(id)};
+    NET.rlSend(id,'{"t":"relay"}');
+    NET.recv({t:'join',id});NET.send({t:'welcome',id,to:id});lanPop.draw();
+  },
+  // host: a browser guest; try the direct connection first, fall back to the relay
+  async offer(id){
+    const pc=NET.pc(),dc=pc.createDataChannel('ps',{ordered:true});
+    NET.wire(id,pc,dc);const c=NET.conns[id];c.up=true;
+    c.upT=setTimeout(()=>{if(NET.conns[id]===c&&c.up)NET.viaRelay(id)},12000);
+    try{
+      await pc.setLocalDescription(await pc.createOffer());await NET.gathered(pc);
+      if(NET.conns[id]===c&&c.up)NET.rlSend(id,JSON.stringify({t:'sdp',s:pc.localDescription.sdp}));
+    }catch(e){if(NET.conns[id]===c)NET.viaRelay(id)}
+  },
+  // joining with a room code
+  joinCode(code){
+    NET.close(true);NET.err='';NET.role='client';NET.id=null;NET.reply='';NET.code=String(code).toUpperCase().replace(/[^A-Z0-9]/g,'');
+    NET.rl=NET.rlOpen({role:'join',code:NET.code},NET.rlGuest);if(!NET.rl)NET.role=null;
+    lanPop.draw();buildItems();
+  },
+  rlGuest(r,m){
+    if(m.t==='room'){r.id=m.id;lanPop.draw()}
+    else if(m.t==='m'){
+      const d=m.d;if(!d||typeof d!=='object')return;
+      if(d.t==='sdp')NET.answer(String(d.s));
+      else if(d.t==='relay'){const c=NET.conns.host;if(c&&c.pc)try{c.pc.close()}catch(e){}NET.conns.host={pc:null,dc:NET.pipe(null)}}
+      else{if(!NET.conns.host)NET.conns.host={pc:null,dc:NET.pipe(null)};if(NET.conns.host.dc&&NET.conns.host.dc.relay)NET.recv(d)}
+    }
+    else if(m.t==='err'){
+      const was=NET.conns.host&&NET.conns.host.dc&&NET.conns.host.dc.relay||!NET.conns.host;
+      NET.rl=null;try{r.ws.close()}catch(e){}
+      if(was){if(NET.id&&NET.conns.host){NET.lost('host');NET.err=NET.rlErr(m.e)}else{NET.role=null;NET.err=NET.rlErr(m.e);NET.conns={};lanPop.draw();buildItems()}}
+    }
+  },
+  async answer(sdp){
+    const pc=NET.pc();NET.conns.host={pc,dc:null};
+    pc.ondatachannel=e=>NET.wire('host',pc,e.channel);
+    try{
+      await pc.setRemoteDescription({type:'offer',sdp});
+      await pc.setLocalDescription(await pc.createAnswer());await NET.gathered(pc);
+      if(NET.conns.host&&NET.conns.host.pc===pc)NET.rlSend(null,JSON.stringify({t:'sdp',s:pc.localDescription.sdp}));
+    }catch(e){/* the host falls back to the relay by itself */}
+  },
+  // the relay socket went away
+  rlGone(r){
+    NET.code='';
+    if(NET.role==='client'){const c=NET.conns.host;if(!c||!c.dc||c.dc.relay){if(NET.id&&c)NET.lost('host');else{NET.role=null;NET.err=NET.err||NET.rlErr('');NET.conns={};lanPop.draw();buildItems()}}}
+    else if(NET.role==='host'){for(const id of Object.keys(NET.conns)){const c=NET.conns[id];if(c.up||c.dc&&c.dc.relay)NET.lost(id)}NET.err=r.code?'The room code stopped working. Players already in can keep playing.':'Could not reach the room server. You can still use a pairing code.';lanPop.draw();if(UI.screen==='online')buildItems()}
   },
   async invite(){
     if(NET.role!=='host')return;
@@ -10039,16 +10120,17 @@ const NET={role:null,id:null,peers:[],err:'',inMatch:false,mySlot:{kind:'human',
   wire(id,pc,dc){
     const c=NET.conns[id]||(NET.conns[id]={pc});c.pc=pc;c.dc=dc;
     dc.onopen=()=>{
-      if(NET.role==='host'){if(NET.pending&&NET.pending.id===id)NET.pending=null;NET.recv({t:'join',id});NET.send({t:'welcome',id,to:id});NET.invite()}
+      const cc=NET.conns[id];if(cc){cc.up=false;clearTimeout(cc.upT)}
+      if(NET.role==='host'){if(NET.pending&&NET.pending.id===id)NET.pending=null;NET.recv({t:'join',id});NET.send({t:'welcome',id,to:id});if(NET.paste)NET.invite()}
       lanPop.draw();
     };
     dc.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}if(NET.role==='host')m.from=id;NET.recv(m)};
-    dc.onclose=()=>NET.lost(id);
-    pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){if(NET.pending&&NET.pending.id===id){NET.err='Could not connect. Are both computers on the same network?';NET.invite()}else NET.lost(id)}};
+    dc.onclose=()=>{const c=NET.conns[id];if(c&&c.dc===dc)NET.lost(id)};   // a connection replaced by the relay closes on its own
+    pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){const cc=NET.conns[id];if(cc&&cc.pc!==pc)return;if(NET.role==='host'&&cc&&cc.up&&NET.rl){NET.viaRelay(id);return}if(NET.pending&&NET.pending.id===id){NET.err='Could not connect. Are both computers on the same network?';NET.invite()}else NET.lost(id)}};
   },
   lost(id){
     const c=NET.conns[id];if(!c||NET.pending&&NET.pending.id===id)return;
-    delete NET.conns[id];try{c.pc.close()}catch(e){}
+    delete NET.conns[id];clearTimeout(c.upT);try{c.pc&&c.pc.close()}catch(e){}
     if(NET.role==='host'){if(NET.peers.includes(id))NET.recv({t:'leave',id});lanPop.draw();if(UI.screen==='online')buildItems()}
     else if(NET.role==='client'){
       NET.role=null;NET.inMatch=false;NET.err='Lost the connection to the host.';lanPop.hide();
@@ -10056,10 +10138,12 @@ const NET={role:null,id:null,peers:[],err:'',inMatch:false,mySlot:{kind:'human',
     }
   },
   close(quiet){
-    const cs=NET.conns,was=NET.role,p=NET.pending;
+    const cs=NET.conns,was=NET.role,p=NET.pending,r=NET.rl;
+    NET.rl=null;NET.code='';NET.paste=false;if(r)try{r.ws.close()}catch(e){}
+    for(const k in cs)clearTimeout(cs[k].upT);
     NET.conns={};NET.pending=null;NET.role=null;NET.peers=[];NET.inMatch=false;NET.myPort=-1;NET.inbox.length=0;NET.q={};NET.reply='';
     if(p)try{p.pc.close()}catch(e){}
-    for(const k in cs)try{cs[k].pc.close()}catch(e){}
+    for(const k in cs)try{cs[k].pc&&cs[k].pc.close()}catch(e){}
     if(was==='host')NET.dropAll();
     if(!quiet)NET.err='';
   },
@@ -10087,6 +10171,7 @@ const NET={role:null,id:null,peers:[],err:'',inMatch:false,mySlot:{kind:'human',
       case'welcome':
         if(NET.role!=='client')break;
         NET.id=m.id;NET.mySlot={kind:'human',ch:-1};lanPop.hide();go(()=>setScreen('netwait'));
+        {const c=NET.conns.host,r=NET.rl;if(r&&c&&c.dc&&!c.dc.relay){NET.rl=null;try{r.ws.close()}catch(e){}}}
         break;
       // host side
       case'join':
@@ -10223,15 +10308,15 @@ const NET={role:null,id:null,peers:[],err:'',inMatch:false,mySlot:{kind:'human',
     const L=[];
     if(NET.role==='host'){
       const n=NET.peers.length;
-      L.push(['You are hosting.',UC.gold],[n?n+(n>1?' players':' player')+' joined.':'Nobody has joined yet.',UC.fg],['Pick Invite a player to get a code for the next one.',UC.mute]);
+      L.push(['You are hosting.',UC.gold],[n?n+(n>1?' players':' player')+' joined.':'Nobody has joined yet.',UC.fg],[NET.paste?'Pick Invite a player to get a code for the next one.':NET.code?'Room code: '+NET.code:'Opening a room...',NET.paste?UC.mute:UC.gold]);
     }else if(NET.role==='client')L.push(['Joining.',UC.gold],['Send your reply code back to the host.',UC.mute]);
-    else L.push(['Play with other computers on your network.',UC.fg],['The host gets an invite code and sends it over: chat, email, anything. Paste it here, then send back the reply code you get.',UC.mute]);
+    else L.push(['Play with friends anywhere, in a browser or on a Wii.',UC.fg],['The host gets a five-letter room code and tells it to the others. They pick Join a room and type it in.',UC.mute]);
     if(NET.err)L.push([NET.err,'#ff8a72']);
     return L;
   }
 };
 /* the pairing box: codes need real text fields for copy and paste, so this one panel is HTML over the canvas */
-const lanPop={el:null,mode:'',
+const lanPop={el:null,mode:'',pairing:false,
   isOpen(){return !!(this.el&&!this.el.hidden)},
   build(){
     const el=document.createElement('div');el.id='lan-pop';el.hidden=true;el.setAttribute('role','dialog');el.setAttribute('aria-label','LAN pairing');
@@ -10250,40 +10335,62 @@ const lanPop={el:null,mode:'',
     const box=(id,val,ro,ph)=>'<textarea data-k="'+id+'" '+(ro?'readonly':'')+' spellcheck="false" placeholder="'+(ph||'')+'" style="display:block;width:100%;box-sizing:border-box;height:64px;margin-top:4px;resize:vertical;font:11px/1.3 ui-monospace,Consolas,monospace;word-break:break-all;background:#17303a;color:#fff5c8;border:1px solid #2a4b52;padding:6px">'+esc(val)+'</textarea>';
     const h=t=>'<div style="color:#ecc45a;font-weight:bold;margin:10px 0 0">'+t+'</div>',p=t=>'<div style="color:#9db6a8">'+t+'</div>';
     const keep=el.querySelector('textarea[data-k="in"]'),typed=keep?keep.value:'';
-    let html='<div style="font-size:15px;color:#fff5c8;font-weight:bold">'+(NET.role==='host'?'Hosting':'Join a game')+'</div>';
+    let html='<div style="font-size:15px;color:#fff5c8;font-weight:bold">'+(NET.role==='host'?'Hosting':'Join a room')+'</div>';
     if(NET.role==='host'){
       const inv=NET.pending,n=NET.peers.length;
       html+=p(n?n+(n>1?' players have':' player has')+' joined.':'Nobody has joined yet.');
-      if(!inv)html+=p('The room is full (four fighters).');
+      if(!NET.paste){
+        html+=h('Room code')+(NET.code?'<div data-k="code" style="font-size:30px;letter-spacing:6px;color:#fff5c8;margin:4px 0">'+esc(NET.code)+'</div>'+p('Friends pick Rooms, then Join a room, and type this code. It works from a browser or a Wii.')
+          :p(NET.rl?'Opening a room...':'No room code right now.'));
+        html+=btn('paste','Use a pairing code instead');
+      }else if(!inv)html+=p('The room is full (four fighters).');
       else{
         html+=h('1. Send this invite code to the other player')+(inv.code?box('inv',inv.code,true)+btn('copyInv','Copy'):p('Making a code...'));
         html+=h('2. Paste the reply code they send back')+box('in',typed,false,'PSR-...')+btn('accept',inv.joining?'Connecting...':'Connect',true);
       }
+    }else if(NET.role==='client'&&NET.code&&!NET.reply){
+      html+=p(NET.id?'In room '+esc(NET.code)+'. Connecting to the host...':'Looking for room '+esc(NET.code)+'...');
     }else if(NET.role==='client'){
       if(NET.reply)html+=h('Send this reply code back to the host')+box('rep',NET.reply,true)+btn('copyRep','Copy',true)+p('Waiting for the host to paste it...');
       else html+=p('Making a reply code...');
+    }else if(lanPop.pairing){
+      html+=h('Paste the invite code from the host')+box('in',typed,false,'PSI-...')+btn('join','Join',true)+btn('codeMode','Use a room code');
     }else{
-      html+=h('Paste the invite code from the host')+box('in',typed,false,'PSI-...')+btn('join','Next',true);
+      const kc=el.querySelector('input[data-k="code"]'),cv=kc?kc.value:'';
+      html+=h('Type the 5-letter room code from the host')+
+        '<input data-k="code" value="'+esc(cv)+'" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="ABCDE" aria-label="Room code" '+
+        'style="display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:6px 8px;background:#0a161b;color:#fff5c8;border:2px solid #2a4b52;font:bold 30px/1.2 ui-monospace,Consolas,monospace;letter-spacing:12px;text-align:center;text-transform:uppercase">'+
+        btn('join','Join',true)+btn('pairMode','I have a pairing code');
     }
     if(NET.err)html+='<div style="color:#ff8a72;margin-top:8px">'+esc(NET.err)+'</div>';
     html+='<div style="margin-top:6px">'+btn('close',NET.role==='client'&&NET.reply?'Hide':'Close')+'</div>';
     el.innerHTML=html;
     el.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>lanPop.act(b.dataset.k,b)));
-    const ta=el.querySelector('textarea[data-k="in"]');
+    const ta=el.querySelector('textarea[data-k="in"]'),ci=el.querySelector('input[data-k="code"]');
     if(ta)ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();lanPop.act(NET.role==='host'?'accept':'join')}});
-    if(focus){const f=ta||el.querySelector('button[data-k^="copy"]')||el.querySelector('button');if(f)f.focus()}
+    if(ci){
+      ci.addEventListener('input',()=>{const v=lanPop.clean(ci.value);if(ci.value!==v)ci.value=v;if(v.length===5)lanPop.act('join')});
+      ci.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();lanPop.act('join')}});
+    }
+    if(focus){const f=ci||ta||el.querySelector('button[data-k^="copy"]')||el.querySelector('button');if(f){f.focus();if(ci)ci.setSelectionRange(ci.value.length,ci.value.length)}}
   },
   async copy(k,b){
     const ta=this.el.querySelector('textarea[data-k="'+k+'"]');if(!ta)return;
     let ok=false;try{await navigator.clipboard.writeText(ta.value);ok=true}catch(e){ta.select();try{ok=document.execCommand('copy')}catch(_){}}
     if(b)b.textContent=ok?'Copied':'Select and copy';
   },
+  clean(v){return String(v).toUpperCase().replace(/[^ABCDEFGHJKLMNPQRSTUVWXYZ23456789]/g,'').slice(0,5)}, // the relay's letters: no O/0, I/1
   act(k,b){
-    const ta=this.el.querySelector('textarea[data-k="in"]'),v=ta?ta.value:'';
+    const ta=this.el.querySelector('textarea[data-k="in"]'),ci=this.el.querySelector('input[data-k="code"]'),v=ta?ta.value:'';
     if(k==='copyInv')this.copy('inv',b);
     else if(k==='copyRep')this.copy('rep',b);
     else if(k==='accept')NET.accept(v);
-    else if(k==='join')NET.join(v);
+    else if(k==='join'){
+      if(ci){const c=this.clean(ci.value);if(c.length<5){NET.err='A room code has 5 letters and numbers.';this.draw(true);return}NET.joinCode(c)}
+      else{const t=v.trim();if(/^PSI-/i.test(t))NET.join(t);else NET.joinCode(t)}
+    }
+    else if(k==='pairMode'||k==='codeMode'){this.pairing=k==='pairMode';NET.err='';this.draw(true)}
+    else if(k==='paste'){NET.paste=true;NET.invite();this.draw()}
     else if(k==='close')this.hide();
   }
 };
