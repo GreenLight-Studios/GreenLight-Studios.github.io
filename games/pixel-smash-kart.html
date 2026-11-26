@@ -222,7 +222,7 @@ const DEVK={
   kbR:{acc:['ArrowUp'],brk:['ArrowDown'],left:['ArrowLeft'],right:['ArrowRight'],drift:['ShiftRight','Slash','Numpad0','ControlRight'],item:['Period','NumpadDecimal','Quote','Comma'],look:['Semicolon','Numpad1'],ok:['Enter','NumpadEnter'],back:['Backspace'],pause:['Backspace']}};
 const DEVS=['kbL','kbR','pad0','pad1','pad2','pad3'],DEV={},DEVP={},DREP={};let PADS=[];
 function padState(gp){const b=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed),x=gp.axes[0]||0,y=gp.axes[1]||0;
-  return{acc:b(0)||b(7),brk:b(1),look:b(2)||b(10),drift:b(5),item:b(4)||b(6)||b(3),left:b(14)||x<-.5,right:b(15)||x>.5,mu:b(12)||y<-.5,md:b(13)||y>.5,ml:b(14)||x<-.5,mr:b(15)||x>.5,ok:b(0),back:b(1),pause:b(9),ax:Math.abs(x)>.18?x:0,ay:Math.abs(y)>.22?y:0}}
+  return{acc:b(0),brk:b(1),look:b(2)||b(10),drift:b(5)||b(7),item:b(4)||b(6)||b(3),left:b(14)||x<-.5,right:b(15)||x>.5,mu:b(12)||y<-.5,md:b(13)||y>.5,ml:b(14)||x<-.5,mr:b(15)||x>.5,ok:b(0),back:b(1),pause:b(9),ax:Math.abs(x)>.18?x:0,ay:Math.abs(y)>.22?y:0}}
 function pollDevs(){PADS=[];try{PADS=navigator.getGamepads?[...navigator.getGamepads()]:[]}catch(e){}
   for(const d of DEVS){DEVP[d]=DEV[d]||{};let s;
     if(d[0]==='k'){const B=DEVK[d];s={};for(const k in B)s[k]=B[k].some(c=>KEY[c]||TAP[c]);s.mu=s.acc;s.md=s.brk;s.ml=s.left;s.mr=s.right;s.ax=0;s.ay=0}
@@ -3050,7 +3050,7 @@ function drawResults(){const RS=RACE;ctx.fillStyle='rgba(10,12,20,.4)';ctx.fillR
 /* ---------- how to play / settings ---------- */
 SCN.howto={update(dt){stepDemo(dt);if(rep('ml',dt)){SEL.page=(SEL.page+2)%3;SFX.move()}if(rep('mr',dt)||hit('ok')){SEL.page=(SEL.page+1)%3;SFX.move()}if(hit('back')){SFX.back();go('main')}},
   draw(){menuBG(.7);uiHead('HOW TO PLAY',(SEL.page+1)+'/3',UIC.blue);const cw=Math.min(W-24,380),x=(W-cw)/2,y=28,chh=H-48;card(x,y,cw,chh);const c=(s,xx,yy,col)=>txt(s,x+xx,y+yy,{color:col||UIC.ink,ol:null});
-    if(SEL.page===0){const L=[['Accelerate','W / Up','A'],['Brake / reverse','S / Down','B'],['Steer','A D / Left Right','Stick'],['Hop + drift','Space / Shift','R'],['Use item','E / Q','L'],['Throw backward','hold S + item',''],['Pause','Esc / P','+'],['Fullscreen','F','']].filter(r=>!(window.PXNOFS&&r[0]==='Fullscreen'));
+    if(SEL.page===0){const L=[['Accelerate','W / Up','A'],['Brake / reverse','S / Down','B'],['Steer','A D / Left Right','Stick'],['Hop + drift','Space / Shift','RB RT'],['Use item','E / Q','LB LT'],['Throw backward','hold S + item',''],['Pause','Esc / P','+'],['Fullscreen','F','']].filter(r=>!(window.PXNOFS&&r[0]==='Fullscreen'));
       c('ACTION',8,6,UIC.mute);c('KEYBOARD',130,6,UIC.mute);c('PAD',cw-50,6,UIC.mute);L.forEach((r,i)=>{c(r[0],8,18+i*11);c(r[1],130,18+i*11,UIC.blue);c(r[2],cw-50,18+i*11)});
       ['Hold drift while steering into a turn. Sparks build up:','blue > orange > purple. Let go for a mini-turbo boost.','Tap drift near a ramp lip to trick. Tricks boost more.','Hold accelerate (drift on touch) just after "2" to rocket start.'].forEach((l,i)=>c(l,8,112+i*11,i===1?'#1a8a7a':UIC.ink))}
     else if(SEL.page===1){const D=[['pebble','Moss Pebble','Rolls straight, bounces off edges.'],['pebble3','Pebble Trio','Three pebbles orbit you.'],['seeker','Ember Seeker','Chases the racer just ahead.'],['seeker3','Seeker Trio','Three seekers orbit you.'],['hornet','Sky Hornet','Flies to the leader and explodes.'],

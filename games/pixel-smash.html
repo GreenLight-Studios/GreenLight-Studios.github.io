@@ -7066,7 +7066,7 @@ function readPad(only){
     const cx=g.axes[2]||0,cy=g.axes[3]||0,cst=Math.hypot(cx,cy)>.6;
     const cMx=cst&&Math.abs(cx)>Math.abs(cy)?Math.sign(cx):0;
     const sm=cst||pad.flick&&pad.fT<=8||pad.vf&&pad.vT<=8||['du','dd','dl','dr'].some(q=>pad[q]>0&&pad[q]<=6); // a smash: the C-stick, or a stick flicked or a d-pad pressed just now
-    return{sm,jb:b(2)||b(3),mx:cMx||mx,tilt:tilt&&!cMx,j:b(2)||b(3)||du||ay<-.82,d:ay>.6||dd||(cst&&cy>.5),a:b(0)||cst,u:ay<-.45||du||(cst&&cy<-.5),sh:b(4)||b(6)||b(7),g:b(5),b:b(1),any:mx||b(0)||b(1)||b(2)||b(3)||b(4)||b(5)||b(6)||b(7)||ay>.6||dd||du||cst};
+    return{sm,jb:b(2)||b(3),mx:cMx||mx,tilt:tilt&&!cMx,j:b(2)||b(3)||du||ay<-.82,d:ay>.6||dd||(cst&&cy>.5),a:b(0)||cst,u:ay<-.45||du||(cst&&cy<-.5),sh:b(6)||b(7),g:b(4)||b(5),b:b(1),any:mx||b(0)||b(1)||b(2)||b(3)||b(4)||b(5)||b(6)||b(7)||ay>.6||dd||du||cst};
   }
   return null;
 }
@@ -8648,7 +8648,7 @@ function buildItems(){
     UI.tileR=R;
     add({id:'fight',label:'Fight',desc:'Up to four players: friends or CPUs.',r:R.fight,pal:UC.red,act:()=>{UI.selMode='match';go(()=>setScreen('fight'))}});
     add({id:'training',label:'Training',desc:'Practice on a dummy, with frame data.',r:R.training,pal:UC.teal,act:()=>{UI.selMode='training';go(()=>setScreen('fight'))}});
-    add({id:'online',label:'Rooms',desc:'Play friends anywhere, in a browser or on a Wii: share a room code.',r:R.online,pal:UC.green,act:()=>go(()=>setScreen('online'))});
+    add({id:'online',label:'Rooms',desc:'Play friends anywhere on compatible platforms: share a room code.',r:R.online,pal:UC.green,act:()=>go(()=>setScreen('online'))});
     add({id:'onl',label:'Online',desc:'For Fun or For Glory against players everywhere.',r:R.watch,pal:UC.amber,act:()=>VER.gate('smash',()=>{if(window.PXCG_AUTH&&!S.onlName)S.onlName=(typeof PXA!=='undefined'&&PXA.user()&&PXA.user().name)||'guest0000_CG';go(()=>setScreen(S.onlName?'onlmode':'onlname'))},()=>uiTone('back'))});
     add({id:'moves',label:'Moves',desc:'See every move and its frame data.',r:R.moves,pal:UC.blue,act:()=>{UI.from='main';UI.mvC=S.hero;UI.mv=0;UI.mvTop=0;go(()=>setScreen('moves'))}});
     add({id:'options',label:'Options',desc:'Sound, screen shake and controls.',r:R.options,pal:UC.slate,act:()=>go(()=>setScreen('options'))});
@@ -9433,7 +9433,7 @@ function drawOptions(){
   drawHeader('Options',UC.slate);
   UI.items.forEach((o,i)=>drawRow(o,i===UI.sel,i));
   const narrow=W<320,x=narrow?8:Math.round(W*.46),av=W-x-6,c1=x,c2=x+Math.min(narrow?72:84,Math.round(av*.32)),c3=x+Math.min(narrow?136:150,Math.round(av*.59)),lastR=UI.items.length?UI.items[UI.items.length-1].r:null,y0=narrow?Math.max(150,lastR?lastR.y+lastR.h+10:150):32;
-  const L=[['Move','A D','Stick'],['Jump','W Space','X Y'],['Crouch','S','Stick down'],['Attack','P','A'],['Special','O','B'],['Shield','I','LB LT RT'],['Grab','U','RB'],['Walk','Shift','Light stick'],['Pause','Esc','Start']];
+  const L=[['Move','A D','Stick'],['Jump','W Space','X Y'],['Crouch','S','Stick down'],['Attack','P','A'],['Special','O','B'],['Shield','I','LT RT'],['Grab','U','LB RB'],['Walk','Shift','Light stick'],['Pause','Esc','Start']];
   const e=entK(3,.3),oy=Math.round((1-e)*30);
   ctx.save();ctx.globalAlpha=e;
   ctx.fillStyle=UC.ink;ctx.fillRect(c1-5,y0-5+oy,W-c1,12+L.length*12+9);
@@ -10310,7 +10310,7 @@ const NET={role:null,id:null,peers:[],err:'',inMatch:false,rl:null,code:'',paste
       const n=NET.peers.length;
       L.push(['You are hosting.',UC.gold],[n?n+(n>1?' players':' player')+' joined.':'Nobody has joined yet.',UC.fg],[NET.paste?'Pick Invite a player to get a code for the next one.':NET.code?'Room code: '+NET.code:'Opening a room...',NET.paste?UC.mute:UC.gold]);
     }else if(NET.role==='client')L.push(['Joining.',UC.gold],['Send your reply code back to the host.',UC.mute]);
-    else L.push(['Play with friends anywhere, in a browser or on a Wii.',UC.fg],['The host gets a five-letter room code and tells it to the others. They pick Join a room and type it in.',UC.mute]);
+    else L.push(['Play with friends anywhere, on compatible platforms.',UC.fg],['The host gets a five-letter room code and tells it to the others. They pick Join a room and type it in.',UC.mute]);
     if(NET.err)L.push([NET.err,'#ff8a72']);
     return L;
   }
@@ -10340,7 +10340,7 @@ const lanPop={el:null,mode:'',pairing:false,
       const inv=NET.pending,n=NET.peers.length;
       html+=p(n?n+(n>1?' players have':' player has')+' joined.':'Nobody has joined yet.');
       if(!NET.paste){
-        html+=h('Room code')+(NET.code?'<div data-k="code" style="font-size:30px;letter-spacing:6px;color:#fff5c8;margin:4px 0">'+esc(NET.code)+'</div>'+p('Friends pick Rooms, then Join a room, and type this code. It works from a browser or a Wii.')
+        html+=h('Room code')+(NET.code?'<div data-k="code" style="font-size:30px;letter-spacing:6px;color:#fff5c8;margin:4px 0">'+esc(NET.code)+'</div>'+p('Friends pick Rooms, then Join a room, and type this code. It works on compatible platforms.')
           :p(NET.rl?'Opening a room...':'No room code right now.'));
         html+=btn('paste','Use a pairing code instead');
       }else if(!inv)html+=p('The room is full (four fighters).');
