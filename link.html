@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Link a Wii &middot; Greenlight Studios</title>
+<meta name="description" content="Sign your Wii in to your Pixel Account with the code it shows.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0c1024">
+<link rel="canonical" href="https://greenlightstudios.app/link.html">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Silkscreen&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<style>
+  .policy{padding:48px 0 72px}
+  .policy .panel{padding:28px clamp(18px,4vw,40px);max-width:560px;margin:0 auto}
+  .policy h1{font:700 clamp(28px,5vw,40px)/1.1 var(--display);margin:0 0 6px;color:#fff}
+  .policy p{color:var(--fg);line-height:1.65;font-size:16px}
+  .policy small{color:var(--mute)}
+  .policy a{color:var(--gold)}
+  .policy .home{display:inline-block;margin:0 auto 20px;color:var(--mute);font:12px var(--label);letter-spacing:.06em;text-decoration:none}
+  .policy label{display:block;margin:16px 0 6px;font:12px var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+  .policy input{width:100%;box-sizing:border-box;padding:12px;border:2px solid #06070f;background:#121a2c;color:#fff;font:700 18px var(--label)}
+  .policy #code{font-size:26px;letter-spacing:.18em;text-transform:uppercase;text-align:center}
+  .policy button{margin:20px 0 0;padding:12px 18px;border:2px solid #06070f;background:#ecc45a;color:#121a2c;font:700 15px var(--label);letter-spacing:.04em;cursor:pointer}
+  .policy button:disabled{opacity:.5;cursor:default}
+  .policy .msg{min-height:1.6em;margin:16px 0 0;font-weight:700}
+  .policy .ok{color:#7be08f}.policy .bad{color:#ff8a7a}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="policy">
+  <div class="wrap">
+    <div style="max-width:560px;margin:0 auto"><a class="home" href="index.html">&#9664; Greenlight Studios</a></div>
+    <article class="panel">
+      <h1>Link a Wii</h1>
+      <small>Pixel Smash for Wii &rarr; your Pixel Account</small>
+      <p>On the Wii, open <strong>Account</strong> and choose <strong>Link</strong>. Type the 8-letter code it shows.
+      The Wii never sees your password.</p>
+      <form id="f" autocomplete="off">
+        <label for="code">Code from the Wii</label>
+        <input id="code" maxlength="9" placeholder="ABCD-EFGH" spellcheck="false" autocapitalize="characters">
+        <p id="who"></p>
+        <div id="signin" hidden>
+          <label for="u">Username</label><input id="u" autocomplete="username">
+          <label for="p">Password</label><input id="p" type="password" autocomplete="current-password">
+        </div>
+        <button id="go" type="submit">Link</button>
+        <p class="msg" id="msg" role="status"></p>
+      </form>
+    </article>
+  </div>
+</main>
+<script>
+(function () {
+  var WORKER = 'https://pixel-auth.pixelsmash.workers.dev';
+  var API_KEY = 'AIzaSyCqFaPGUiM3b8ZbcgxMNqVyijAUgwLmK_Q';
+  var $ = function (id) { return document.getElementById(id); };
+  var ERR = {
+    bad_code: 'That code is not right or has run out. Check it on the Wii, or start again there for a new one.',
+    login_failed: 'Wrong username or password.', bad_token: 'Your sign-in ran out. Sign in again below.',
+    busy: 'The account server is busy. Try again in a moment.', offline: 'Could not reach the account server.'
+  };
+  function sess() { try { var s = JSON.parse(localStorage.getItem('pixel.acct') || 'null'); return s && s.uid && s.refresh ? s : null; } catch (e) { return null; } }
+  async function post(url, body, form) {
+    try {
+      var r = await fetch(url, { method: 'POST', headers: { 'content-type': form ? 'application/x-www-form-urlencoded' : 'application/json' }, body: form ? body : JSON.stringify(body) });
+      return await r.json();
+    } catch (e) { return { ok: false, err: 'offline' }; }
+  }
+  // the game's session (same site): a fresh ID token from its refresh token, without touching the game's copy
+  async function tokenFromGame(s) {
+    if (s.exp - Date.now() > 120000) return s.id;
+    var j = await post('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(s.refresh), true);
+    return j && j.id_token || null;
+  }
+  async function tokenFromLogin() {
+    var r = await post(WORKER + '/login', { username: $('u').value, password: $('p').value });
+    if (!r.ok) throw r.err || 'busy';
+    var j = await post('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=' + API_KEY, { token: r.token, returnSecureToken: true });
+    if (!j || !j.idToken) throw 'busy';
+    return j.idToken;
+  }
+  var s = sess(), useGame = !!s;
+  function showSignin() { useGame = false; $('signin').hidden = false; $('who').textContent = 'Sign in to the account the Wii should use.'; }
+  if (s) $('who').innerHTML = 'Signed in on this browser. <a href="#" id="other">Use another account</a>';
+  else showSignin();
+  var o = $('other'); if (o) o.onclick = function (e) { e.preventDefault(); showSignin(); };
+  $('code').oninput = function () {
+    var v = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    this.value = v.length > 4 ? v.slice(0, 4) + '-' + v.slice(4) : v;
+  };
+  var q = new URLSearchParams(location.search).get('code'); if (q) { $('code').value = q; $('code').oninput(); }
+  $('f').onsubmit = async function (e) {
+    e.preventDefault();
+    var code = $('code').value.replace(/-/g, ''), msg = $('msg');
+    msg.className = 'msg'; msg.textContent = '';
+    if (code.length !== 8) { msg.className = 'msg bad'; msg.textContent = 'The code has 8 letters and numbers.'; return; }
+    $('go').disabled = true;
+    try {
+      var id = useGame ? await tokenFromGame(s) : await tokenFromLogin();
+      if (!id) { showSignin(); throw 'bad_token'; }
+      var r = await post(WORKER + '/link/approve', { idToken: id, code: code });
+      if (!r.ok) { if (r.err === 'bad_token' && useGame) showSignin(); throw r.err || 'busy'; }
+      msg.className = 'msg ok';
+      msg.textContent = 'Done. The Wii will sign in as ' + (r.name || 'you') + ' in a few seconds.';
+      $('p').value = '';
+    } catch (err) {
+      msg.className = 'msg bad'; msg.textContent = ERR[err] || ERR.busy;
+    } finally { $('go').disabled = false; }
+  };
+})();
+</script>
+</body>
+</html>
