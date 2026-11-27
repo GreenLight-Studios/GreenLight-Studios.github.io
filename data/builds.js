@@ -32,7 +32,7 @@ window.GL_BUILDS = {
       },
       "apk": {
         "file": "downloads/PixelSmashKart-v1.51.apk",
-        "size": 1738505,
+        "size": 1824521,
         "date": "2026-11-27"
       }
     }
