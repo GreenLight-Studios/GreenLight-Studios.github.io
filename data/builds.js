@@ -1,7 +1,7 @@
 /* written by site/sync.py - do not edit by hand */
 window.GL_BUILDS = {
   "version": "1.51",
-  "synced": "2026-11-26",
+  "synced": "2026-11-27",
   "games": {
     "smash": {
       "name": "Pixel Smash",
@@ -22,18 +22,18 @@ window.GL_BUILDS = {
       "html": {
         "file": "games/pixel-smash-kart.html",
         "saveAs": "Pixel Smash Kart.html",
-        "size": 2621074,
-        "date": "2026-11-26"
+        "size": 2814861,
+        "date": "2026-11-27"
       },
       "apk": {
         "file": "downloads/PixelSmashKart-v1.51.apk",
         "size": 1738505,
-        "date": "2026-11-26"
+        "date": "2026-11-27"
       }
     }
   },
   "bundle": {
     "file": "downloads/GreenlightStudios-PixelGames-v1.51.zip",
-    "size": 3918667
+    "size": 4003855
   }
 };
