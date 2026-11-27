@@ -154,6 +154,13 @@
         btn.removeAttribute('aria-disabled'); btn.removeAttribute('role');
         btn.href = g.apk.file; btn.setAttribute('download', g.apk.file.split('/').pop());
       }
+      // the Wii channel: a beta .wad for the Homebrew Channel (installed with a WAD manager)
+      const w = card.querySelector('[data-kind=wad]');
+      if (w && g.wad) {
+        w.hidden = false;
+        w.querySelector('[data-size]').textContent = '.wad · ' + mb(g.wad.size) + ' · install with a WAD manager';
+        const wb = w.querySelector('.btn'); wb.href = g.wad.file; wb.setAttribute('download', g.wad.file.split('/').pop());
+      }
     });
     // the changelog page shows each game's latest version straight from the build data
     document.querySelectorAll('[data-latest]').forEach((el) => {

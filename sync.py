@@ -19,7 +19,7 @@ DL_DIR = os.path.join(SITE, 'downloads')
 DATA = os.path.join(SITE, 'data', 'builds.js')
 
 GAMES = [
-    dict(id='smash', name='Pixel Smash', html='Pixel Smash.html', slug='pixel-smash', apk='PixelSmash-v*.apk'),
+    dict(id='smash', name='Pixel Smash', html='Pixel Smash.html', slug='pixel-smash', apk='PixelSmash-v*.apk', wad='wii/PixelSmash-v*.wad'),
     dict(id='kart', name='Pixel Smash Kart', html='Pixel Smash Kart.html', slug='pixel-smash-kart', apk='PixelSmashKart-v*.apk'),
 ]
 
@@ -83,6 +83,17 @@ def main():
             a = apks[-1]
             shutil.copy2(a, os.path.join(DL_DIR, os.path.basename(a)))
             entry['apk'] = dict(file='downloads/' + os.path.basename(a), size=os.path.getsize(a), date=stamp(a))
+        # the Wii channel (Pixel Smash only), from wii/channel/make_wad.py; shown as a beta download
+        if g.get('wad'):
+            wads = sorted(glob.glob(os.path.join(ROOT, g['wad'])), key=os.path.getmtime)
+            for old in glob.glob(os.path.join(DL_DIR, os.path.basename(g['wad']))):
+                if not wads or os.path.basename(old) != os.path.basename(wads[-1]):
+                    os.remove(old)
+            if wads:
+                w = wads[-1]
+                shutil.copy2(w, os.path.join(DL_DIR, os.path.basename(w)))
+                entry['wad'] = dict(file='downloads/' + os.path.basename(w), size=os.path.getsize(w), date=stamp(w))
+                print('%-17s wad  %6.2f MB' % (g['name'], entry['wad']['size'] / 1048576))
         # the app icon the Android build draws, reused on the site's download cards
         icon = os.path.join(ROOT, 'apk', '%s-icon-512.png' % g['id'])
         if os.path.exists(icon):

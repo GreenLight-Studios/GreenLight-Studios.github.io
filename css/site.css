@@ -152,6 +152,7 @@ a.shot .play span{font:700 22px/1 var(--display);color:#fff;background:var(--red
 .dl-card header small{font:11px/1 var(--label);color:var(--mute);letter-spacing:.08em}
 .dl-list{list-style:none;margin:0;padding:0;display:grid;gap:14px}
 .dl-row{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;background:var(--night2);padding:12px 12px 12px 14px;box-shadow:-3px 0 0 var(--edge),3px 0 0 var(--edge),0 -3px 0 var(--edge),0 3px 0 var(--edge)}
+.dl-row[hidden]{display:none}
 .dl-row>svg{width:44px;height:44px;shape-rendering:crispEdges}
 .dl-row b{font:700 18px/1.15 var(--display);display:block;color:#fff}
 .dl-row small{display:block;font:11px/1.5 var(--label);color:var(--mute);letter-spacing:.03em}
